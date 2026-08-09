@@ -60,6 +60,9 @@ jobs:
           workspaces: "./src-tauri -> target"
           key: smoke-win-x64
 
+      - name: Run sidex-extensions unit tests
+        run: cargo test --manifest-path crates/sidex-extensions/Cargo.toml --lib --target x86_64-pc-windows-msvc
+
       - name: Verify marketplace base URL
         run: cargo test --manifest-path crates/sidex-extensions/Cargo.toml --test marketplace_install default_marketplace_base_url_is_open_vsx --target x86_64-pc-windows-msvc
 

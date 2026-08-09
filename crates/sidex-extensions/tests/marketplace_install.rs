@@ -79,3 +79,35 @@ fn default_marketplace_base_url_is_open_vsx() {
         "marketplace must point at Open VSX, not a third-party proxy"
     );
 }
+#[test]
+#[ignore = "requires network; CI runs with --ignored"]
+fn install_list_uninstall_round_trip() {
+    let rt = tokio::runtime::Runtime::new().expect("failed to start tokio runtime");
+
+    rt.block_on(async {
+        let id = "formulahendry.auto-close-tag";
+        let target = tempfile::TempDir::new().expect("failed to create temp dir");
+
+        let manifest = sidex_extensions::install_from_marketplace(id, target.path())
+            .await
+            .expect("marketplace install should succeed");
+        assert_eq!(manifest.canonical_id(), id);
+
+        // Registry scan sees the installed extension on disk.
+        let scanned = sidex_extensions::ExtensionRegistry::scan_directory(target.path())
+            .expect("scan should succeed");
+        assert!(
+            scanned.iter().any(|m| m.canonical_id() == id),
+            "registry must list the installed extension"
+        );
+
+        // Uninstall removes it from disk.
+        sidex_extensions::uninstall(id, target.path()).expect("uninstall should succeed");
+        let scanned_after = sidex_extensions::ExtensionRegistry::scan_directory(target.path())
+            .expect("scan should succeed");
+        assert!(
+            !scanned_after.iter().any(|m| m.canonical_id() == id),
+            "registry must no longer list the uninstalled extension"
+        );
+    });
+}

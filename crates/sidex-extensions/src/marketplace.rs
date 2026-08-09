@@ -29,12 +29,12 @@ const CACHE_TTL_SECS: u64 = 300;
 /// long-lived connection pool with TCP keep-alive, request-level
 /// gzip/brotli, HTTP/2 adaptive windowing, and a generous
 /// connect+request timeout. The client is meant to be constructed
-/// **once per process** â€” repeated `reqwest::Client::new()` calls in
+/// **once per process** Ã¢â‚¬â€ repeated `reqwest::Client::new()` calls in
 /// earlier revisions were the main source of search latency because
 /// every call re-did DNS + TCP + TLS.
 ///
 /// Keep-alive is intentionally aggressive so a user who does
-/// `search â†’ click extension â†’ install` reuses the same TCP + TLS
+/// `search Ã¢â€ â€™ click extension Ã¢â€ â€™ install` reuses the same TCP + TLS
 /// session for all three requests. With the Worker on Cloudflare, the
 /// RTT from a warm connection to cache hit is a single HTTP/2 frame.
 fn build_http_client() -> reqwest::Client {
@@ -445,7 +445,7 @@ impl MarketplaceClient {
         };
 
         // Cap the cache so long-lived sessions don't accumulate unbounded
-        // query keys. 256 entries Ã— ~20 extensions each â‰ˆ still well
+        // query keys. 256 entries Ãƒâ€” ~20 extensions each Ã¢â€°Ë† still well
         // under a MB, but new entries evict the oldest once full.
         if self.cached_queries.len() >= 256 {
             if let Some(oldest) = self
@@ -760,5 +760,64 @@ mod tests {
         assert_eq!(client.cached_queries.len(), 1);
         client.clear_cache();
         assert!(client.cached_queries.is_empty());
+    }
+    #[test]
+    fn open_vsx_search_response_parses_without_id() {
+        // Real Open VSX search item: no top-level id/downloadUrl; id must
+        // be derived from namespace + name, download from files.download.
+        let json = r#"{"extensions":[{"name":"auto-close-tag","namespace":"formulahendry","version":"0.5.15","files":{"download":"https://open-vsx.org/api/formulahendry/auto-close-tag/0.5.15/file/formulahendry.auto-close-tag-0.5.15.vsix","icon":"https://open-vsx.org/api/formulahendry/auto-close-tag/0.5.15/file/logo.png"},"downloadCount":516207,"averageRating":5.0,"reviewCount":1,"timestamp":"2023-12-20T03:23:08.147166Z","repository":"https://github.com/formulahendry/vscode-auto-close-tag.git"}],"offset":0,"totalSize":818}"#;
+        let resp: OpenVsxSearchResponse = serde_json::from_str(json).expect("search response parses");
+        assert_eq!(resp.extensions.len(), 1);
+        assert_eq!(resp.total_size, Some(818));
+
+        let ext = &resp.extensions[0];
+        assert_eq!(ext.canonical_id(), "formulahendry.auto-close-tag");
+        assert_eq!(
+            ext.download_url_for("formulahendry.auto-close-tag", "0.5.15"),
+            "https://open-vsx.org/api/formulahendry/auto-close-tag/0.5.15/file/formulahendry.auto-close-tag-0.5.15.vsix"
+        );
+        assert_eq!(ext.install_count, 516207);
+        assert!((ext.rating - 5.0).abs() < f32::EPSILON);
+        assert_eq!(ext.rating_count, 1);
+        assert_eq!(ext.last_updated, "2023-12-20T03:23:08.147166Z");
+        assert_eq!(
+            ext.repository_url.as_deref(),
+            Some("https://github.com/formulahendry/vscode-auto-close-tag.git")
+        );
+        assert_eq!(
+            ext.files.as_ref().map(|f| f.icon.as_str()),
+            Some("https://open-vsx.org/api/formulahendry/auto-close-tag/0.5.15/file/logo.png")
+        );
+    }
+
+    #[test]
+    fn open_vsx_detail_response_parses_without_id_or_download_url() {
+        // Real Open VSX detail endpoint shape.
+        let json = r#"{"name":"auto-close-tag","namespace":"formulahendry","version":"0.5.15","files":{"download":"https://open-vsx.org/api/formulahendry/auto-close-tag/0.5.15/file/formulahendry.auto-close-tag-0.5.15.vsix"},"downloads":{"universal":"https://open-vsx.org/api/formulahendry/auto-close-tag/0.5.15/file/formulahendry.auto-close-tag-0.5.15.vsix"}}"#;
+        let ext: MarketplaceExtension = serde_json::from_str(json).expect("detail response parses");
+        assert_eq!(ext.canonical_id(), "formulahendry.auto-close-tag");
+        assert_eq!(
+            ext.download_url_for("formulahendry.auto-close-tag", "0.5.15"),
+            "https://open-vsx.org/api/formulahendry/auto-close-tag/0.5.15/file/formulahendry.auto-close-tag-0.5.15.vsix"
+        );
+    }
+
+    #[test]
+    fn canonical_id_falls_back_to_name_without_namespace() {
+        let json = r#"{"name":"solo","version":"1.0.0"}"#;
+        let ext: MarketplaceExtension = serde_json::from_str(json).expect("minimal parses");
+        assert_eq!(ext.canonical_id(), "solo");
+    }
+
+    #[test]
+    fn legacy_id_and_download_url_still_win() {
+        // Old proxy-style payloads keep working.
+        let json = r#"{"id":"rust-lang.rust-analyzer","namespace":"rust-lang","name":"rust-analyzer","version":"1.0.0","downloadUrl":"https://example.com/file.vsix"}"#;
+        let ext: MarketplaceExtension = serde_json::from_str(json).expect("legacy parses");
+        assert_eq!(ext.canonical_id(), "rust-lang.rust-analyzer");
+        assert_eq!(
+            ext.download_url_for("rust-lang.rust-analyzer", "1.0.0"),
+            "https://example.com/file.vsix"
+        );
     }
 }
