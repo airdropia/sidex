@@ -79,7 +79,10 @@ pub async fn install_from_marketplace(id: &str, target_dir: &Path) -> Result<Ext
 
     let manifest = install_from_vsix(tmp.path(), target_dir)?;
     if !manifest.canonical_id().eq_ignore_ascii_case(id) {
-        log::warn!("extension id mismatch: requested {id}, installed {}", manifest.canonical_id());
+        log::warn!(
+            "extension id mismatch: requested {id}, installed {}",
+            manifest.canonical_id()
+        );
     }
     Ok(manifest)
 }

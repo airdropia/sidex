@@ -19,7 +19,6 @@ use commands::window::restore_and_show;
 use std::sync::Arc;
 use tauri::Manager;
 
-
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 #[allow(clippy::too_many_lines)]
 pub fn run() {

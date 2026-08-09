@@ -126,9 +126,10 @@ pub async fn install_extension_from_marketplace(
     extension_id: String,
 ) -> Result<InstalledExtension, String> {
     let target_dir = user_extensions_dir();
-    let installed = sidex_extensions::installer::install_from_marketplace(&extension_id, &target_dir)
-        .await
-        .map_err(|e| format!("marketplace install: {e:#}"))?;
+    let installed =
+        sidex_extensions::installer::install_from_marketplace(&extension_id, &target_dir)
+            .await
+            .map_err(|e| format!("marketplace install: {e:#}"))?;
     let safe_id = sanitize_ext_id(&installed.canonical_id()).map_err(|e| format!("{e:#}"))?;
     let ext_dir = target_dir.join(&safe_id);
     log::info!("installed extension {safe_id} to {}", ext_dir.display());
@@ -221,7 +222,10 @@ pub async fn extension_search_marketplace(
                 publisher: ext.publisher.display_name,
                 install_count: ext.install_count,
                 rating: ext.rating,
-                icon_url: ext.icon_url.clone().or_else(|| ext.files.as_ref().map(|f| f.icon.clone())),
+                icon_url: ext
+                    .icon_url
+                    .clone()
+                    .or_else(|| ext.files.as_ref().map(|f| f.icon.clone())),
                 download_url: ext.download_url,
             }
         })
