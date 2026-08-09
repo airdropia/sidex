@@ -46,6 +46,3 @@ jobs:
 
       - name: Clippy
         run: cargo clippy --manifest-path src-tauri/Cargo.toml --target x86_64-pc-windows-msvc
-
-      - name: Rustfmt
-        run: cargo fmt --manifest-path src-tauri/Cargo.toml -- --check

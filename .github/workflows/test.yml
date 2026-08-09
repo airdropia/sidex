@@ -64,4 +64,4 @@ jobs:
         run: cargo test --manifest-path crates/sidex-extensions/Cargo.toml --test marketplace_install default_marketplace_base_url_is_open_vsx --target x86_64-pc-windows-msvc
 
       - name: Install extension from Open VSX and assert files on disk
-        run: cargo test --manifest-path crates/sidex-extensions/Cargo.toml --test marketplace_install --ignored --target x86_64-pc-windows-msvc -- --test-threads=1
+        run: cargo test --manifest-path crates/sidex-extensions/Cargo.toml --test marketplace_install --target x86_64-pc-windows-msvc -- --ignored --test-threads=1
