@@ -12,6 +12,7 @@ use std::fs;
 use std::path::Path;
 use std::sync::Arc;
 use tauri::AppHandle;
+use tauri::Emitter;
 use tokio::sync::Mutex;
 
 /// Shared marketplace client — one HTTP connection pool per process,
@@ -115,6 +116,25 @@ pub async fn install_extension_from_url(url: String) -> Result<InstalledExtensio
     result
 }
 
+/// Installs an extension from the marketplace by its canonical
+/// `publisher.name` id. Downloads the VSIX from Open VSX and extracts it
+/// into the user extensions directory, then notifies the workbench so the
+/// extension host hot-loads it without a restart.
+#[tauri::command]
+pub async fn install_extension_from_marketplace(
+    app: AppHandle,
+    extension_id: String,
+) -> Result<InstalledExtension, String> {
+    let target_dir = user_extensions_dir();
+    let installed = sidex_extensions::installer::install_from_marketplace(&extension_id, &target_dir)
+        .await
+        .map_err(|e| format!("marketplace install: {e:#}"))?;
+    let safe_id = sanitize_ext_id(&installed.canonical_id()).map_err(|e| format!("{e:#}"))?;
+    let ext_dir = target_dir.join(&safe_id);
+    log::info!("installed extension {safe_id} to {}", ext_dir.display());
+    let _ = app.emit("extensions://changed", &safe_id);
+    Ok(to_installed(&installed, &ext_dir))
+}
 #[tauri::command]
 pub async fn uninstall_extension(extension_id: String) -> Result<(), String> {
     let safe_id = sanitize_ext_id(&extension_id).map_err(|e| format!("{e:#}"))?;

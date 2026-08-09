@@ -514,8 +514,25 @@ class InstallExtensionTask extends AbstractExtensionTask<ILocalExtension> implem
 			: this.options.profileLocation;
 		const scannedExtension = URI.isUri(this.extension)
 			? await this.webExtensionsScannerService.addExtension(this.extension, metadata, this.profileLocation)
-			: await this.webExtensionsScannerService.addExtensionFromGallery(this.extension, metadata, this.profileLocation);
+			: (globalThis as any).__SIDEX_TAURI__
+				? await this.installViaTauri(this.extension, metadata)
+				: await this.webExtensionsScannerService.addExtensionFromGallery(this.extension, metadata, this.profileLocation);
 		return toLocalExtension(scannedExtension);
+	}
+
+	private async installViaTauri(
+		galleryExtension: IGalleryExtension,
+		metadata: Metadata
+	): Promise<IScannedExtension> {
+		const { invoke } = await import('../../../../sidex-bridge.js');
+		const installed = await invoke<{ id: string; path: string }>('install_extension_from_marketplace', {
+			extensionId: galleryExtension.identifier.id
+		});
+		if (!installed?.path) {
+			throw new Error(`Extension ${galleryExtension.identifier.id} install failed: no path returned`);
+		}
+		const location = URI.file(installed.path);
+		return this.webExtensionsScannerService.addExtension(location, metadata, this.profileLocation);
 	}
 }
 

@@ -91,7 +91,6 @@ toml = "0.8"
 anyhow = "1"
 sidex-db = { path = "../crates/sidex-db" }
 sidex-dap = { path = "../crates/sidex-dap" }
-sidex-remote = { path = "../crates/sidex-remote" }
 sidex-settings = { path = "../crates/sidex-settings" }
 sidex-theme = { path = "../crates/sidex-theme" }
 

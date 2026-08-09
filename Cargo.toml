@@ -13,7 +13,6 @@ members = [
   "crates/sidex-keymap",
   "crates/sidex-settings",
   "crates/sidex-db",
-  "crates/sidex-remote",
   "crates/sidex-dap",
   "crates/sidex-tasks",
   "crates/sidex-update",
@@ -46,7 +45,6 @@ sidex-theme = { path = "crates/sidex-theme" }
 sidex-keymap = { path = "crates/sidex-keymap" }
 sidex-settings = { path = "crates/sidex-settings" }
 sidex-db = { path = "crates/sidex-db" }
-sidex-remote = { path = "crates/sidex-remote" }
 sidex-extension-sdk = { path = "sidex-extension-sdk" }
 sidex-tasks = { path = "crates/sidex-tasks" }
 sidex-dap = { path = "crates/sidex-dap" }

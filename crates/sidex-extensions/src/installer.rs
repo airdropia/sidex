@@ -69,15 +69,21 @@ pub async fn install_from_marketplace(id: &str, target_dir: &Path) -> Result<Ext
         .await
         .context("failed to fetch extension metadata")?;
 
-    let vsix_bytes = client
-        .download_vsix_bytes(id, &ext.version)
-        .await
-        .context("failed to download .vsix")?;
+    let vsix_bytes = if ext.download_url.is_empty() {
+        client.download_vsix_bytes(id, &ext.version).await
+    } else {
+        client.download_from_url(&ext.download_url).await
+    }
+    .context("failed to download .vsix")?;
 
     let tmp = tempfile::NamedTempFile::new()?;
     std::fs::write(tmp.path(), &vsix_bytes)?;
 
-    install_from_vsix(tmp.path(), target_dir)
+    let manifest = install_from_vsix(tmp.path(), target_dir)?;
+    if !manifest.canonical_id().eq_ignore_ascii_case(id) {
+        log::warn!("extension id mismatch: requested {id}, installed {}", manifest.canonical_id());
+    }
+    Ok(manifest)
 }
 
 /// Uninstalls an extension by removing its directory.

@@ -92,7 +92,7 @@ export class SideXExtensionService {
 	}
 
 	async install(id: string): Promise<void> {
-		return invoke('install_extension', { extensionId: id });
+		return invoke('install_extension_from_marketplace', { extensionId: id });
 	}
 
 	async uninstall(id: string): Promise<void> {
