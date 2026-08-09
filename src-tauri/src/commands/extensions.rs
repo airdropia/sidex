@@ -213,7 +213,7 @@ pub async fn extension_search_marketplace(
                 ext.short_description.clone()
             };
             MarketplaceResult {
-                id: ext.id,
+                id: ext.canonical_id(),
                 name: ext.name,
                 display_name: ext.display_name,
                 description: desc,
@@ -221,7 +221,7 @@ pub async fn extension_search_marketplace(
                 publisher: ext.publisher.display_name,
                 install_count: ext.install_count,
                 rating: ext.rating,
-                icon_url: ext.icon_url,
+                icon_url: ext.icon_url.clone().or_else(|| ext.files.as_ref().map(|f| f.icon.clone())),
                 download_url: ext.download_url,
             }
         })

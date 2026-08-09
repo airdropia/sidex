@@ -29,12 +29,12 @@ const CACHE_TTL_SECS: u64 = 300;
 /// long-lived connection pool with TCP keep-alive, request-level
 /// gzip/brotli, HTTP/2 adaptive windowing, and a generous
 /// connect+request timeout. The client is meant to be constructed
-/// **once per process** — repeated `reqwest::Client::new()` calls in
+/// **once per process** â€” repeated `reqwest::Client::new()` calls in
 /// earlier revisions were the main source of search latency because
 /// every call re-did DNS + TCP + TLS.
 ///
 /// Keep-alive is intentionally aggressive so a user who does
-/// `search → click extension → install` reuses the same TCP + TLS
+/// `search â†’ click extension â†’ install` reuses the same TCP + TLS
 /// session for all three requests. With the Worker on Cloudflare, the
 /// RTT from a warm connection to cache hit is a single HTTP/2 frame.
 fn build_http_client() -> reqwest::Client {
@@ -67,9 +67,13 @@ fn build_http_client() -> reqwest::Client {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct MarketplaceExtension {
-    /// Canonical `publisher.name` id.
-    #[serde(alias = "namespace_name")]
+    /// Canonical `publisher.name` id. Open VSX does not send this; it is
+    /// derived from `namespace` + `name` when absent.
+    #[serde(default, alias = "namespace_name")]
     pub id: String,
+    /// Namespace / publisher of the extension (Open VSX `namespace`).
+    #[serde(default)]
+    pub namespace: String,
     /// Human-readable display name.
     #[serde(default)]
     pub display_name: String,
@@ -89,14 +93,14 @@ pub struct MarketplaceExtension {
     /// All available versions.
     #[serde(default)]
     pub versions: Vec<ExtensionVersion>,
-    /// Number of installs.
-    #[serde(default)]
+    /// Number of installs (Open VSX `downloadCount`).
+    #[serde(default, alias = "downloadCount")]
     pub install_count: u64,
-    /// Average rating (0.0–5.0).
-    #[serde(default)]
+    /// Average rating (0.0-5.0, Open VSX `averageRating`).
+    #[serde(default, alias = "averageRating")]
     pub rating: f32,
-    /// Number of ratings.
-    #[serde(default)]
+    /// Number of ratings (Open VSX `reviewCount`).
+    #[serde(default, alias = "reviewCount")]
     pub rating_count: u32,
     /// Extension categories.
     #[serde(default)]
@@ -104,21 +108,80 @@ pub struct MarketplaceExtension {
     /// Freeform tags.
     #[serde(default)]
     pub tags: Vec<String>,
-    /// Icon URL.
+    /// Icon URL (Open VSX `files.icon`).
     #[serde(default)]
     pub icon_url: Option<String>,
-    /// Source repository URL.
-    #[serde(default)]
+    /// Source repository URL (Open VSX `repository`).
+    #[serde(default, alias = "repository")]
     pub repository_url: Option<String>,
     /// License identifier (e.g. "MIT").
     #[serde(default)]
     pub license: Option<String>,
-    /// Direct download URL for the `.vsix`.
+    /// Direct download URL for the `.vsix` (legacy field).
     #[serde(default)]
     pub download_url: String,
-    /// ISO 8601 timestamp of last update.
-    #[serde(default)]
+    /// ISO 8601 timestamp of last update (Open VSX `timestamp`).
+    #[serde(default, alias = "timestamp")]
     pub last_updated: String,
+    /// Open VSX file map (`files.download`, `files.icon`).
+    #[serde(default)]
+    pub files: Option<ExtensionFiles>,
+    /// Open VSX per-platform download map.
+    #[serde(default)]
+    pub downloads: Option<ExtensionDownloads>,
+}
+
+impl MarketplaceExtension {
+    /// Canonical `publisher.name` id, derived for Open VSX responses that
+    /// omit the `id` field.
+    pub fn canonical_id(&self) -> String {
+        if !self.id.is_empty() {
+            self.id.clone()
+        } else if !self.namespace.is_empty() {
+            format!("{}.{}", self.namespace, self.name)
+        } else {
+            self.name.clone()
+        }
+    }
+
+    /// Best available VSIX download URL.
+    pub fn download_url_for(&self, id: &str, version: &str) -> String {
+        if !self.download_url.is_empty() {
+            return self.download_url.clone();
+        }
+        if let Some(files) = &self.files {
+            if !files.download.is_empty() {
+                return files.download.clone();
+            }
+        }
+        if let Some(downloads) = &self.downloads {
+            if !downloads.universal.is_empty() {
+                return downloads.universal.clone();
+            }
+        }
+        let (ns, name) = id
+            .split_once('.')
+            .unwrap_or((self.namespace.as_str(), self.name.as_str()));
+        format!("https://open-vsx.org/api/{ns}/{name}/{version}/file/{ns}.{name}-{version}.vsix")
+    }
+}
+
+/// Open VSX `files` map.
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ExtensionFiles {
+    #[serde(default)]
+    pub download: String,
+    #[serde(default)]
+    pub icon: String,
+}
+
+/// Open VSX per-platform `downloads` map.
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ExtensionDownloads {
+    #[serde(default)]
+    pub universal: String,
 }
 
 /// Publisher / namespace information.
@@ -382,7 +445,7 @@ impl MarketplaceClient {
         };
 
         // Cap the cache so long-lived sessions don't accumulate unbounded
-        // query keys. 256 entries × ~20 extensions each ≈ still well
+        // query keys. 256 entries Ã— ~20 extensions each â‰ˆ still well
         // under a MB, but new entries evict the oldest once full.
         if self.cached_queries.len() >= 256 {
             if let Some(oldest) = self

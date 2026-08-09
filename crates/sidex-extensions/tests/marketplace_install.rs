@@ -65,7 +65,7 @@ fn marketplace_client_search_hits_open_vsx() {
             result
                 .results
                 .iter()
-                .any(|ext| ext.id == "formulahendry.auto-close-tag"),
+                .any(|ext| ext.canonical_id() == "formulahendry.auto-close-tag"),
             "expected formulahendry.auto-close-tag in search results"
         );
     });

@@ -69,12 +69,10 @@ pub async fn install_from_marketplace(id: &str, target_dir: &Path) -> Result<Ext
         .await
         .context("failed to fetch extension metadata")?;
 
-    let vsix_bytes = if ext.download_url.is_empty() {
-        client.download_vsix_bytes(id, &ext.version).await
-    } else {
-        client.download_from_url(&ext.download_url).await
-    }
-    .context("failed to download .vsix")?;
+    let vsix_bytes = client
+        .download_from_url(&ext.download_url_for(id, &ext.version))
+        .await
+        .context("failed to download .vsix")?;
 
     let tmp = tempfile::NamedTempFile::new()?;
     std::fs::write(tmp.path(), &vsix_bytes)?;
