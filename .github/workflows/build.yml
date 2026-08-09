@@ -12,13 +12,7 @@ on:
       - "Cargo.lock"
   pull_request:
     branches: [main]
-    paths:
-      - ".github/workflows/build.yml"
-      - "crates/**"
-      - "src-tauri/**"
-      - "sidex-extension-sdk/**"
-      - "Cargo.toml"
-      - "Cargo.lock"
+  workflow_dispatch:
 
 env:
   RUST_BACKTRACE: 1
