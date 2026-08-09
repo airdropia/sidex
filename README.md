@@ -39,7 +39,7 @@ VSCode's memory usage is almost entirely from its bundled Chromium, not the edit
   <img src="./docs/assets/compare.jpg" alt="SideX 16.4 MB vs Visual Studio Code 797.8 MB" width="760">
 </p>
 
-RAM savings are most tested on macOS, WKWebView is shared with Safari. On Windows the picture is more nuanced — WebView2 memory can look higher depending on how it's measured, and [it's an active area in the Tauri ecosystem](https://github.com/tauri-apps/tauri/issues/5889). The target is **under 200 MB at idle** on macOS. We'll publish real benchmarks once the app is stable enough for them to be meaningful.
+This build targets **Windows 10 x64** only. The memory target is **under 200 MB at idle** on WebView2; we'll publish real benchmarks once the release is stable enough to be meaningful.
 
 ---
 
@@ -52,7 +52,7 @@ RAM savings are most tested on macOS, WKWebView is shared with Safari. On Window
 - Integrated terminal — full PTY via Rust, shell detection, resize, signals
 - Git — status, diff, log, stage, commit, branch, push/pull/fetch, stash, reset
 - Themes — multiple built-in themes from the VSCode catalogue
-- Native OS menus (macOS, Windows, Linux)
+- Native Windows menus
 - Extension installation from [Open VSX](https://open-vsx.org/)
 - File watching, file search, full-text search, Rust-backed search index
 - SQLite storage, document management (autosave, undo/redo, encoding)
@@ -64,7 +64,7 @@ RAM savings are most tested on macOS, WKWebView is shared with Safari. On Window
 ### Run in Development
 
 ```bash
-git clone https://github.com/Sidenai/sidex.git
+git clone https://github.com/airdropia/sidex.git
 cd sidex
 npm install
 npm run tauri dev
@@ -85,7 +85,7 @@ npm run build
 npx tauri build
 ```
 
-First build takes 5–10 minutes (Rust compile time). Pre-built binaries are not distributed yet.
+First build takes 5–10 minutes (Rust compile time). All builds, tests, and packaging run on GitHub Actions (Windows x64); download ready-made installers from the [Releases](https://github.com/airdropia/sidex/releases) page. The extension host requires Node.js 18+ on the machine.
 
 ---
 
