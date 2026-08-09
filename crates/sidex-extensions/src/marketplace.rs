@@ -766,7 +766,8 @@ mod tests {
         // Real Open VSX search item: no top-level id/downloadUrl; id must
         // be derived from namespace + name, download from files.download.
         let json = r#"{"extensions":[{"name":"auto-close-tag","namespace":"formulahendry","version":"0.5.15","files":{"download":"https://open-vsx.org/api/formulahendry/auto-close-tag/0.5.15/file/formulahendry.auto-close-tag-0.5.15.vsix","icon":"https://open-vsx.org/api/formulahendry/auto-close-tag/0.5.15/file/logo.png"},"downloadCount":516207,"averageRating":5.0,"reviewCount":1,"timestamp":"2023-12-20T03:23:08.147166Z","repository":"https://github.com/formulahendry/vscode-auto-close-tag.git"}],"offset":0,"totalSize":818}"#;
-        let resp: OpenVsxSearchResponse = serde_json::from_str(json).expect("search response parses");
+        let resp: OpenVsxSearchResponse =
+            serde_json::from_str(json).expect("search response parses");
         assert_eq!(resp.extensions.len(), 1);
         assert_eq!(resp.total_size, Some(818));
 
