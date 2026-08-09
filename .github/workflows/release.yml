@@ -56,6 +56,11 @@ jobs:
           mkdir -p dist-artifacts
           find target \( -name "*.msi" -o -name "*-setup.exe" \) -exec cp {} dist-artifacts/ \; 2>/dev/null || true
           ls -la dist-artifacts/
+          count=$(ls dist-artifacts/ 2>/dev/null | wc -l)
+          if [ "$count" -eq 0 ]; then
+            echo "::error::No installer artifacts were produced (NSIS/MSI missing); aborting release"
+            exit 1
+          fi
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4

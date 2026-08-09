@@ -111,3 +111,30 @@ fn install_list_uninstall_round_trip() {
         );
     });
 }
+
+#[test]
+#[ignore = "requires network; CI runs with --ignored"]
+fn install_kilocode_win32_x64() {
+    // Regression: Kilo Code publishes platform-specific VSIX builds with
+    // no universal file and files.download pointing at alpine-arm64.
+    // Windows must get the win32-x64 build, and a 100+ MB download must
+    // not hit the 15s search-client timeout.
+    let rt = tokio::runtime::Runtime::new().expect("failed to start tokio runtime");
+
+    rt.block_on(async {
+        let id = "kilocode.kilo-code";
+        let target = tempfile::TempDir::new().expect("failed to create temp dir");
+
+        let manifest = sidex_extensions::install_from_marketplace(id, target.path())
+            .await
+            .expect("kilocode install should succeed");
+        assert_eq!(manifest.canonical_id(), id);
+
+        let pkg = target.path().join(id).join("package.json");
+        assert!(
+            pkg.exists(),
+            "kilocode package.json must exist on disk: {}",
+            pkg.display()
+        );
+    });
+}

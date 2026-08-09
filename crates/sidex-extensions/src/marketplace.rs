@@ -29,12 +29,12 @@ const CACHE_TTL_SECS: u64 = 300;
 /// long-lived connection pool with TCP keep-alive, request-level
 /// gzip/brotli, HTTP/2 adaptive windowing, and a generous
 /// connect+request timeout. The client is meant to be constructed
-/// **once per process** Ã¢â‚¬â€ repeated `reqwest::Client::new()` calls in
+/// **once per process** ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â repeated `reqwest::Client::new()` calls in
 /// earlier revisions were the main source of search latency because
 /// every call re-did DNS + TCP + TLS.
 ///
 /// Keep-alive is intentionally aggressive so a user who does
-/// `search Ã¢â€ â€™ click extension Ã¢â€ â€™ install` reuses the same TCP + TLS
+/// `search ÃƒÂ¢Ã¢â‚¬Â Ã¢â‚¬â„¢ click extension ÃƒÂ¢Ã¢â‚¬Â Ã¢â‚¬â„¢ install` reuses the same TCP + TLS
 /// session for all three requests. With the Worker on Cloudflare, the
 /// RTT from a warm connection to cache hit is a single HTTP/2 frame.
 fn build_http_client() -> reqwest::Client {
@@ -126,9 +126,10 @@ pub struct MarketplaceExtension {
     /// Open VSX file map (`files.download`, `files.icon`).
     #[serde(default)]
     pub files: Option<ExtensionFiles>,
-    /// Open VSX per-platform download map.
+    /// Open VSX per-platform download map (keys like `win32-x64`,
+    /// `universal`, `linux-x64`, ...).
     #[serde(default)]
-    pub downloads: Option<ExtensionDownloads>,
+    pub downloads: Option<std::collections::HashMap<String, String>>,
 }
 
 impl MarketplaceExtension {
@@ -145,18 +146,27 @@ impl MarketplaceExtension {
     }
 
     /// Best available VSIX download URL.
+    ///
+    /// Open VSX `files.download` can point at an unrelated platform (it is
+    /// the latest-uploaded target), so the per-platform `downloads` map is
+    /// consulted first. This build targets Windows x64, so `win32-x64` is
+    /// preferred, then `universal`, then `win32-arm64`.
     pub fn download_url_for(&self, id: &str, version: &str) -> String {
+        if let Some(downloads) = &self.downloads {
+            for key in ["win32-x64", "universal", "win32-arm64", "web"] {
+                if let Some(url) = downloads.get(key) {
+                    if !url.is_empty() {
+                        return url.clone();
+                    }
+                }
+            }
+        }
         if !self.download_url.is_empty() {
             return self.download_url.clone();
         }
         if let Some(files) = &self.files {
             if !files.download.is_empty() {
                 return files.download.clone();
-            }
-        }
-        if let Some(downloads) = &self.downloads {
-            if !downloads.universal.is_empty() {
-                return downloads.universal.clone();
             }
         }
         let (ns, name) = id
@@ -176,13 +186,7 @@ pub struct ExtensionFiles {
     pub icon: String,
 }
 
-/// Open VSX per-platform `downloads` map.
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct ExtensionDownloads {
-    #[serde(default)]
-    pub universal: String,
-}
+
 
 /// Publisher / namespace information.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
@@ -445,7 +449,7 @@ impl MarketplaceClient {
         };
 
         // Cap the cache so long-lived sessions don't accumulate unbounded
-        // query keys. 256 entries Ãƒâ€” ~20 extensions each Ã¢â€°Ë† still well
+        // query keys. 256 entries ÃƒÆ’Ã¢â‚¬â€ ~20 extensions each ÃƒÂ¢Ã¢â‚¬Â°Ã‹â€  still well
         // under a MB, but new entries evict the oldest once full.
         if self.cached_queries.len() >= 256 {
             if let Some(oldest) = self
@@ -533,9 +537,23 @@ impl MarketplaceClient {
     /// Downloads raw bytes from an explicit URL (e.g. the exact VSIX
     /// download link returned by the registry, which can differ for
     /// pre-release or platform-targeted builds).
+    ///
+    /// Uses a dedicated client with a generous timeout: VSIX packages can
+    /// be 100+ MB (e.g. Kilo Code) and the search/metadata client caps at
+    /// 15s, which would abort every large download.
     pub async fn download_from_url(&self, url: &str) -> Result<Vec<u8>> {
-        let bytes = self
-            .http
+        let client = reqwest::Client::builder()
+            .timeout(std::time::Duration::from_secs(300))
+            .connect_timeout(std::time::Duration::from_secs(15))
+            .user_agent(concat!(
+                "SideX/",
+                env!("CARGO_PKG_VERSION"),
+                " (+https://github.com/airdropia/sidex)"
+            ))
+            .build()
+            .map_err(|e| anyhow::anyhow!("failed to build download client: {e}"))?;
+
+        let bytes = client
             .get(url)
             .send()
             .await
@@ -819,6 +837,18 @@ mod tests {
         assert_eq!(
             ext.download_url_for("rust-lang.rust-analyzer", "1.0.0"),
             "https://example.com/file.vsix"
+        );
+    }
+    #[test]
+    fn platform_download_prefers_win32_x64() {
+        // Kilo Code style: platform-specific builds, no universal, and
+        // files.download pointing at an unrelated platform (alpine-arm64).
+        let json = r#"{"name":"kilo-code","namespace":"kilocode","version":"7.4.20","files":{"download":"https://open-vsx.org/api/kilocode/kilo-code/alpine-arm64/7.4.20/file/kilocode.kilo-code-7.4.20@alpine-arm64.vsix"},"downloads":{"win32-x64":"https://open-vsx.org/api/kilocode/kilo-code/win32-x64/7.4.20/file/kilocode.kilo-code-7.4.20@win32-x64.vsix","linux-x64":"https://open-vsx.org/api/kilocode/kilo-code/linux-x64/7.4.20/file/kilocode.kilo-code-7.4.20@linux-x64.vsix"}}"#;
+        let ext: MarketplaceExtension = serde_json::from_str(json).expect("parses");
+        assert_eq!(
+            ext.download_url_for("kilocode.kilo-code", "7.4.20"),
+            "https://open-vsx.org/api/kilocode/kilo-code/win32-x64/7.4.20/file/kilocode.kilo-code-7.4.20@win32-x64.vsix",
+            "win32-x64 must win over files.download (alpine-arm64)"
         );
     }
 }
