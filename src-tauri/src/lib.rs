@@ -136,7 +136,6 @@ pub fn run() {
                 log::warn!("secret storage disabled: {err}");
             }
 
-            
 
             if cfg!(debug_assertions) {
                 app.handle().plugin(
