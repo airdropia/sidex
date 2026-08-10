@@ -144,7 +144,7 @@ Per project rule: **no builds/tests on this machine**. All validation happens on
 6. Wire WASM/LSP/index/watch/profile/secrets surfaces to frontend or unregister until implemented.
 7. Tighten CI: run lint-rust on windows x64 with `-D warnings` (after fixing lints), remove `continue-on-error`, scope `udeps` to Windows, keep audit coverage.
 8. Drop macOS/Linux cruft: configs, entitlements, unix deps where safe — **done for src-tauri and CI**; remaining unix cfg blocks are inert on Windows (documented above).
-9. Update docs to reflect verified status and single-owner workflow.
+9. Update docs to reflect verified status and single-owner workflow — **done**: README drops macOS/Linux build instructions and WKWebView/FSEvents references, states Windows x64-only CI; ARCHITECTURE references AUDIT.md and marks notify as Windows.
 
 ## 7. Method
 

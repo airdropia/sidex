@@ -61,7 +61,7 @@ Extension Host               →       Sidecar process (in progress)
 | `screen/Display` | Tauri monitor API | Ported |
 | `contextBridge` | `@tauri-apps/api` (direct) | Ported |
 | `node-pty` | `portable-pty` (Rust) | Ported |
-| `@parcel/watcher` | `notify` (Rust) | Ported |
+| `@parcel/watcher` | `notify` (Rust, Windows) | Ported |
 | `child_process` | `std::process::Command` | Ported |
 | `fs/fs.promises` | `@tauri-apps/plugin-fs` + Rust fs | Ported |
 | `net/http` | `reqwest` (Rust) | Ported |

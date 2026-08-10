@@ -33,7 +33,7 @@ SideX is a port of Visual Studio Code that replaces Electron with [Tauri](https:
 
 ## Why
 
-VSCode's memory usage is almost entirely from its bundled Chromium, not the editor itself. Tauri replaces that with the webview already on your system — WKWebView on macOS, WebView2 on Windows — shared across apps and costing almost nothing extra.
+VSCode's memory usage is almost entirely from its bundled Chromium, not the editor itself. Tauri replaces that with the webview already on your system — WebView2 on Windows — shared across apps and costing almost nothing extra.
 
 <p align="center">
   <img src="./docs/assets/compare.jpg" alt="SideX 16.4 MB vs Visual Studio Code 797.8 MB" width="760">
@@ -75,9 +75,6 @@ npm run tauri dev
 ```bash
 npm install
 
-# macOS / Linux
-NODE_OPTIONS="--max-old-space-size=12288" npm run build
-
 # Windows (PowerShell)
 $env:NODE_OPTIONS="--max-old-space-size=12288"
 npm run build
@@ -85,7 +82,7 @@ npm run build
 npx tauri build
 ```
 
-First build takes 5–10 minutes (Rust compile time). All builds, tests, and packaging run on GitHub Actions (Windows x64); download ready-made installers from the [Releases](https://github.com/airdropia/sidex/releases) page. The extension host requires Node.js 18+ on the machine.
+First build takes 5–10 minutes (Rust compile time). All builds, tests, and packaging run on GitHub Actions (Windows x64 only) - never on this machine. Download ready-made installers from the [Releases](https://github.com/airdropia/sidex/releases) page. The extension host requires Node.js 18+ on the machine.
 
 ---
 
@@ -134,7 +131,7 @@ sidex/
 | Syntax / Themes | vscode-textmate, vscode-oniguruma (WASM) |
 | Backend | Rust, Tauri 2 |
 | Terminal | portable-pty (Rust) |
-| File watching | notify crate (FSEvents on macOS) |
+| File watching | notify crate (Windows) |
 | Search | dashmap + rayon + regex (parallel, Rust) |
 | Storage | SQLite via rusqlite |
 | Extensions | Open VSX registry |
