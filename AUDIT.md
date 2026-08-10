@@ -110,15 +110,16 @@ sidex-src/                       git repo (origin Sidenai/sidex, fork airdropia/
 - `fmt.yml` rustfmt runs on ubuntu while the repo is CRLF (previous agent dropped the Windows fmt step).
 - `audit.yml` runs `cargo audit` against `src-tauri/Cargo.lock` only; ignores `RUSTSEC-2023-0071`.
 
-### 4.8 `udeps.yml` and `lint-rust.yml` need Linux system deps
-Both install webkit2gtk etc. on ubuntu — this is Linux-platform cruft in CI for a Windows-only product. They only exist because the crates/workspace uses Tauri. Could run `--no-default-features` style checks or restrict to pure crates.
+### 4.8 CI Linux cruft (resolved)
+`lint-rust.yml` and `udeps.yml` previously installed webkit2gtk etc. on ubuntu for a Windows-only product. Both now run on `windows-2022` with no system deps.
 
-### 4.9 Platform cruft remaining
-- `src-tauri/src/main.rs`: linux WEBKIT env block.
-- `src-tauri/tauri.macos.conf.json`, `entitlements.plist` remain.
-- `notify` crate built with `macos_fsevent` feature.
-- `[target.'cfg(unix)'.dependencies] libc` in `src-tauri/Cargo.toml`; `sidex-terminal` has unix-only deps.
-- README/ARCHITECTURE still reference macOS (WKWebView) and "contributors welcome" text inconsistent with single-owner project.
+### 4.9 Platform cruft (cleanup applied)
+- `src-tauri/src/main.rs`: linux WEBKIT env block **removed**.
+- `src-tauri/tauri.macos.conf.json`, `src-tauri/entitlements.plist` **deleted**.
+- `src-tauri/tauri.conf.json`: macOS + linux bundle sections **removed** (Windows section kept).
+- `src-tauri/Cargo.toml`: `libc` unix-only dep **removed**; `notify` no longer built with `macos_fsevent`.
+- CI `lint-rust.yml` + `udeps.yml`: **switched from ubuntu (webkit2gtk system deps) to windows-2022**.
+- Remaining unix-only references: `#[cfg(unix)]` blocks in `terminal.rs`/`process.rs`/`extension_wasm.rs`/`os.rs` (inert on Windows), `crates/sidex-terminal` unix deps, `apply_file_mode` cfg(unix) in vsix.rs, README/ARCHITECTURE macOS mentions. Note: removing `libc` means unix builds of `src-tauri` will not compile; intentional for a Windows-only product.
 
 ### 4.10 Local machine policy
 Per project rule: **no builds/tests on this machine**. All validation happens on GitHub Actions Windows x64. The repo already follows this (no local `.cargo` cache, CI-only installs), and this audit made no build attempts.
@@ -142,7 +143,7 @@ Per project rule: **no builds/tests on this machine**. All validation happens on
 5. Fix or remove the remote stub (`sidexRemoteService.ts` / `remote_disconnect`) — **done**: service rewritten as safe stub, no unregistered `remote_*` commands called.
 6. Wire WASM/LSP/index/watch/profile/secrets surfaces to frontend or unregister until implemented.
 7. Tighten CI: run lint-rust on windows x64 with `-D warnings` (after fixing lints), remove `continue-on-error`, scope `udeps` to Windows, keep audit coverage.
-8. Drop macOS/Linux cruft: configs, entitlements, unix deps where safe.
+8. Drop macOS/Linux cruft: configs, entitlements, unix deps where safe — **done for src-tauri and CI**; remaining unix cfg blocks are inert on Windows (documented above).
 9. Update docs to reflect verified status and single-owner workflow.
 
 ## 7. Method

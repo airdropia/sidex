@@ -54,28 +54,9 @@
       "icons/icon.icns",
       "icons/icon.ico"
     ],
-    "macOS": {
-      "signingIdentity": "Developer ID Application: kima Booker (D983H3RN86)",
-      "entitlements": "entitlements.plist",
-      "minimumSystemVersion": "10.15"
-    },
     "windows": {
       "webviewInstallMode": {
         "type": "downloadBootstrapper"
-      }
-    },
-    "linux": {
-      "deb": {
-        "depends": [
-          "libwebkit2gtk-4.1-0",
-          "libgtk-3-0"
-        ]
-      },
-      "rpm": {
-        "depends": [
-          "webkit2gtk4.1",
-          "gtk3"
-        ]
       }
     }
   }
