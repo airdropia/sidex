@@ -19,6 +19,8 @@ use tauri::{AppHandle, Emitter, State};
 use tokio::sync::mpsc::{self, UnboundedSender};
 use tokio::task::AbortHandle;
 
+use super::validation::validate_path;
+
 /// Maximum file size to read content for (100KB)
 const MAX_FILE_CONTENT_SIZE: u64 = 100 * 1024;
 
@@ -412,6 +414,10 @@ pub async fn watch_start(
     // Validate paths
     if paths.is_empty() {
         return Err("At least one path must be provided".to_string());
+    }
+
+    for path in &paths {
+        validate_path(path)?;
     }
 
     let valid_paths: Vec<PathBuf> = paths

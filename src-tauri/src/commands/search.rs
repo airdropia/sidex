@@ -6,6 +6,8 @@ use sidex_workspace::search::{
     SearchOptions as CrateSearchOptions, SearchQuery as CrateSearchQuery,
 };
 
+use super::validation::validate_path;
+
 #[derive(Debug, Clone, Serialize)]
 pub struct FileMatch {
     pub path: String,
@@ -49,6 +51,7 @@ pub fn search_files(
     pattern: String,
     options: Option<SearchFileOptions>,
 ) -> Result<Vec<FileMatch>, String> {
+    validate_path(&root)?;
     let crate_opts = options.map(|o| CrateFileSearchOptions {
         max_results: o.max_results,
         include_hidden: o.include_hidden,
@@ -75,6 +78,7 @@ pub fn search_text(
     query: String,
     options: Option<SearchTextOptions>,
 ) -> Result<Vec<TextMatch>, String> {
+    validate_path(&root)?;
     let opts_ref = options.as_ref();
     let query_len = query.len();
 
@@ -210,6 +214,7 @@ pub fn search_workspace(
     query: String,
     options: Option<WorkspaceSearchOptions>,
 ) -> Result<Vec<WsSearchMatch>, String> {
+    validate_path(&root)?;
     let ws_query = build_ws_query(&query, options.as_ref());
     let ws_opts = build_ws_options(options.as_ref());
 
@@ -235,6 +240,7 @@ pub fn search_workspace_grouped(
     query: String,
     options: Option<WorkspaceSearchOptions>,
 ) -> Result<Vec<WsSearchGroup>, String> {
+    validate_path(&root)?;
     let ws_query = build_ws_query(&query, options.as_ref());
     let ws_opts = build_ws_options(options.as_ref());
 
@@ -284,6 +290,7 @@ pub fn search_workspace_replace_preview(
     replacement: String,
     options: Option<WorkspaceSearchOptions>,
 ) -> Result<Vec<WsFileReplacement>, String> {
+    validate_path(&root)?;
     let ws_query = build_ws_query(&query, options.as_ref());
 
     let replacements = SearchEngine::replace_in_files(Path::new(&root), &ws_query, &replacement)
@@ -315,6 +322,7 @@ pub fn search_workspace_replace_apply(
     query: String,
     replacement: String,
 ) -> Result<WsReplaceReport, String> {
+    validate_path(&root)?;
     let ws_query = CrateSearchQuery {
         pattern: query,
         is_regex: false,

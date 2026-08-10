@@ -96,8 +96,8 @@ sidex-src/                       git repo (origin Sidenai/sidex, fork airdropia/
 - `commands/extension_wasm.rs`: ~40 registered commands; no frontend caller found in `src/vs/platform/sidex`.
 - `commands/index.rs`, `watch.rs`, `profiles.rs`, `secrets.rs`: registered, frontend usage not evident.
 
-### 4.5 Security validation coverage is partial
-`commands/validation.rs` is wired into `fs.rs` (all 10 commands) and `git.rs` (all commands). The other path-taking surfaces (`search.rs`, `watch.rs`, `tasks.rs`, `debug.rs`, `terminal.rs`, `extensions.rs`, `extension_wasm.rs`, `lsp.rs`) do **not** call `validate_path`/`validate_args`; coverage must be extended or explicitly justified per module. `validate_args` (NUL check for git-style arg arrays) has no call sites.
+### 4.5 Security validation coverage
+`commands/validation.rs` is wired into `fs.rs` (all 10 commands), `git.rs` (all commands), `search.rs` (all 6 commands), `watch.rs` (`watch_start` per-path), and `tasks.rs` (`task_spawn` cwd, `tasks_detect`, `tasks_parse_config`). Remaining path-taking surfaces not yet covered: `debug.rs`, `terminal.rs`, `extensions.rs`, `extension_wasm.rs`, `lsp.rs` — extend or explicitly justify per module. `validate_args` (NUL check for arg arrays) still has no call sites.
 
 ### 4.6 `sidex-asset` protocol path handling
 `lib.rs` registers `sidex-asset` custom protocol that serves **any file path** read from the request URI. No sandboxing to app/user-data dirs; `Access-Control-Allow-Origin: *`. Needs a base-dir allowlist if used by webviews.
@@ -124,7 +124,7 @@ Per project rule: **no builds/tests on this machine**. All validation happens on
 
 ## 5. Risk register (top items)
 
-1. Path validation enforced only in `fs`/`git`; `search`, `watch`, `tasks`, `debug`, `terminal`, `extensions`, `lsp` take paths/args without traversal checks → arbitrary file access if those surfaces accept renderer-controlled paths.
+1. Path validation enforced in `fs`, `git`, `search`, `watch`, `tasks`; `debug`, `terminal`, `extensions`, `extension_wasm`, `lsp` still take paths/args without traversal checks.
 2. `sidex-asset` protocol unrestricted file serving.
 3. Extension install extracts archives without size/entry limits → zip-bomb/disk-fill.
 4. `git_run`-style commands pass user strings to `git` → argument injection if args are not array-validated.
@@ -134,7 +134,7 @@ Per project rule: **no builds/tests on this machine**. All validation happens on
 
 ## 6. What's left (gap list, ordered by value)
 
-1. Extend `validate_path`/`validate_args` coverage to `search`, `watch`, `tasks`, `debug`, `terminal`, `extensions`, `lsp` (fs + git already covered).
+1. Extend `validate_path`/`validate_args` coverage to `debug`, `terminal`, `extensions`, `extension_wasm`, `lsp` (fs, git, search, watch, tasks already covered).
 2. Harden `sidex-asset` protocol with a base-directory allowlist.
 3. Archive extraction limits in extension install (size, entry count, decompression ratio, no symlink escapes).
 4. Decide the terminal story: keep `terminal.rs` as the single PTY path; mark `process.rs` `term_*` as extension-facing or remove.

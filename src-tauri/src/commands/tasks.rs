@@ -5,6 +5,8 @@ use std::process::{Child, Command, Stdio};
 use std::sync::{Arc, Mutex};
 use tauri::{AppHandle, Emitter, State};
 
+use super::validation::validate_path;
+
 fn shell_escape(s: &str) -> String {
     if s.is_empty() {
         return "''".to_string();
@@ -115,6 +117,7 @@ pub fn task_spawn(
     };
 
     if let Some(ref dir) = cwd {
+        validate_path(dir)?;
         if !dir.is_empty() && std::path::Path::new(dir).is_dir() {
             cmd.current_dir(dir);
         }
@@ -304,6 +307,7 @@ impl TaskDefinition {
 #[allow(clippy::needless_pass_by_value)]
 #[allow(clippy::unnecessary_wraps)]
 pub fn tasks_detect(workspace: String) -> Result<Vec<DetectedTask>, String> {
+    validate_path(&workspace)?;
     let root = std::path::Path::new(&workspace);
     let mut all = Vec::new();
 
@@ -325,6 +329,7 @@ pub fn tasks_detect(workspace: String) -> Result<Vec<DetectedTask>, String> {
 #[tauri::command]
 #[allow(clippy::needless_pass_by_value)]
 pub fn tasks_parse_config(workspace: String) -> Result<Vec<TaskDefinition>, String> {
+    validate_path(&workspace)?;
     let tasks_path = std::path::Path::new(&workspace)
         .join(".vscode")
         .join("tasks.json");
