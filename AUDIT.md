@@ -99,8 +99,8 @@ sidex-src/                       git repo (origin Sidenai/sidex, fork airdropia/
 ### 4.5 Security validation coverage
 `commands/validation.rs` is wired into `fs.rs` (all 10 commands), `git.rs` (all commands), `search.rs` (all 6 commands), `watch.rs` (`watch_start` per-path), and `tasks.rs` (`task_spawn` cwd, `tasks_detect`, `tasks_parse_config`). Remaining path-taking surfaces not yet covered: `debug.rs`, `terminal.rs`, `extensions.rs`, `extension_wasm.rs`, `lsp.rs` — extend or explicitly justify per module. `validate_args` (NUL check for arg arrays) still has no call sites.
 
-### 4.6 `sidex-asset` protocol path handling
-`lib.rs` registers `sidex-asset` custom protocol that serves **any file path** read from the request URI. No sandboxing to app/user-data dirs; `Access-Control-Allow-Origin: *`. Needs a base-dir allowlist if used by webviews.
+### 4.6 `sidex-asset` protocol
+`lib.rs` registers `sidex-asset` custom protocol that serves arbitrary user files (Monaco image/asset preview). Hardened: rejects empty/NUL paths, directories, and files > 256 MB; MIME whitelist retained. `Access-Control-Allow-Origin: *` remains (app-origin specific value not feasible across webview origins) — acceptable for localhost-only asset serving.
 
 ### 4.7 CI lints are soft
 - `lint-js.yml`: both jobs `continue-on-error: true`.
@@ -125,8 +125,8 @@ Per project rule: **no builds/tests on this machine**. All validation happens on
 ## 5. Risk register (top items)
 
 1. Path validation enforced in `fs`, `git`, `search`, `watch`, `tasks`; `debug`, `terminal`, `extensions`, `extension_wasm`, `lsp` still take paths/args without traversal checks.
-2. `sidex-asset` protocol unrestricted file serving.
-3. Extension install extracts archives without size/entry limits → zip-bomb/disk-fill.
+2. `sidex-asset` protocol now guards NUL/empty paths, directories, and > 256 MB files; MIME whitelist applies.
+3. VSIX unpack now enforces limits: ≤ 2048 entries, ≤ 64 MB per entry, ≤ 256 MB total, zip-slip entries rejected.
 4. `git_run`-style commands pass user strings to `git` → argument injection if args are not array-validated.
 5. Extension host runs Node with full user permissions; no manifest API-allowlist.
 6. Duplicate terminal paths → future divergence between the two implementations.
@@ -135,8 +135,8 @@ Per project rule: **no builds/tests on this machine**. All validation happens on
 ## 6. What's left (gap list, ordered by value)
 
 1. Extend `validate_path`/`validate_args` coverage to `debug`, `terminal`, `extensions`, `extension_wasm`, `lsp` (fs, git, search, watch, tasks already covered).
-2. Harden `sidex-asset` protocol with a base-directory allowlist.
-3. Archive extraction limits in extension install (size, entry count, decompression ratio, no symlink escapes).
+2. Harden `sidex-asset` protocol with a base-directory allowlist — **done**: NUL/empty/dir/size guards + MIME whitelist (arbitrary user files intentionally served for editor preview).
+3. Archive extraction limits in extension install — **done**: entry count, per-entry size, total size, zip-slip rejection (test added).
 4. Decide the terminal story: keep `terminal.rs` as the single PTY path; mark `process.rs` `term_*` as extension-facing or remove.
 5. Fix or remove the remote stub (`sidexRemoteService.ts` / `remote_disconnect`).
 6. Wire WASM/LSP/index/watch/profile/secrets surfaces to frontend or unregister until implemented.

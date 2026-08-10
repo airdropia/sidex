@@ -69,6 +69,19 @@ pub fn unpack_vsix(vsix_path: &Path) -> Result<VsixPackage> {
         .with_context(|| format!("failed to open .vsix: {}", vsix_path.display()))?;
     let mut archive = zip::ZipArchive::new(file).context("failed to read .vsix as ZIP")?;
 
+    const MAX_ARCHIVE_ENTRIES: usize = 2048;
+    const MAX_ENTRY_BYTES: u64 = 64 * 1024 * 1024;
+    const MAX_TOTAL_BYTES: u64 = 256 * 1024 * 1024;
+
+    if archive.len() > MAX_ARCHIVE_ENTRIES {
+        anyhow::bail!(
+            "VSIX contains too many entries ({} > {MAX_ARCHIVE_ENTRIES})",
+            archive.len()
+        );
+    }
+
+    let mut total_bytes: u64 = 0;
+
     let mut manifest_json: Option<String> = None;
     let mut vsix_manifest_xml: Option<String> = None;
     let mut readme: Option<String> = None;
@@ -81,7 +94,7 @@ pub fn unpack_vsix(vsix_path: &Path) -> Result<VsixPackage> {
     for i in 0..archive.len() {
         let mut entry = archive.by_index(i)?;
         let Some(name) = entry.enclosed_name() else {
-            continue;
+            anyhow::bail!("VSIX contains an entry that escapes the archive root");
         };
         let name_str = name.to_string_lossy().to_string();
 
@@ -100,6 +113,14 @@ pub fn unpack_vsix(vsix_path: &Path) -> Result<VsixPackage> {
         }
 
         let unix_mode = entry.unix_mode();
+        let entry_len = entry.size();
+        if entry_len > MAX_ENTRY_BYTES {
+            anyhow::bail!("VSIX entry too large: {name_str} ({entry_len} bytes)");
+        }
+        total_bytes += entry_len;
+        if total_bytes > MAX_TOTAL_BYTES {
+            anyhow::bail!("VSIX archive exceeds size limit ({total_bytes} bytes)");
+        }
         let mut buf = Vec::new();
         entry.read_to_end(&mut buf)?;
 
@@ -369,5 +390,26 @@ mod tests {
             )
             .unwrap()
         }
+    }
+
+    #[test]
+    fn unpack_rejects_archive_with_too_many_entries() {
+        use std::io::Write;
+
+        let dir = tempfile::tempdir().expect("tempdir");
+        let vsix_path = dir.path().join("many.vsix");
+        let file = std::fs::File::create(&vsix_path).expect("create vsix");
+        let mut writer = zip::ZipWriter::new(file);
+        let options = zip::write::SimpleFileOptions::default();
+        for i in 0..2049u32 {
+            writer
+                .start_file(format!("extension/payload-{i}.js"), options)
+                .expect("start file");
+            writer.write_all(b"// x").expect("write");
+        }
+        writer.finish().expect("finish zip");
+
+        let err = unpack_vsix(&vsix_path).unwrap_err();
+        assert!(err.to_string().contains("too many entries"));
     }
 }

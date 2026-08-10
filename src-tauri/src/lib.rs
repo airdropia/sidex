@@ -46,11 +46,29 @@ pub fn run() {
         ))
         .register_asynchronous_uri_scheme_protocol("sidex-asset", |_ctx, request, responder| {
             std::thread::spawn(move || {
+                const MAX_ASSET_BYTES: u64 = 256 * 1024 * 1024;
+
                 let raw_path = request.uri().path();
                 let decoded = urlencoding::decode(raw_path.strip_prefix('/').unwrap_or(raw_path))
                     .unwrap_or_default();
+                let path = std::path::Path::new(decoded.as_ref());
+                let meta = std::fs::metadata(path).ok();
+                let blocked = decoded.is_empty()
+                    || decoded.contains('\0')
+                    || meta.as_ref().is_some_and(|m| m.is_dir())
+                    || meta.as_ref().is_some_and(|m| m.len() > MAX_ASSET_BYTES);
+                if blocked {
+                    responder.respond(
+                        tauri::http::Response::builder()
+                            .status(404)
+                            .header("Access-Control-Allow-Origin", "*")
+                            .body(Vec::new())
+                            .unwrap(),
+                    );
+                    return;
+                }
 
-                let Ok(data) = std::fs::read(decoded.as_ref()) else {
+                let Ok(data) = std::fs::read(path) else {
                     responder.respond(
                         tauri::http::Response::builder()
                             .status(404)
@@ -61,7 +79,7 @@ pub fn run() {
                     return;
                 };
 
-                let mime = match std::path::Path::new(decoded.as_ref())
+                let mime = match path
                     .extension()
                     .and_then(|e| e.to_str())
                 {
