@@ -186,8 +186,6 @@ pub struct ExtensionFiles {
     pub icon: String,
 }
 
-
-
 /// Publisher / namespace information.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]

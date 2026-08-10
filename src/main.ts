@@ -73,7 +73,6 @@ async function boot() {
 			keymap: new SideXKeymapService(),
 			fileSystem: new SideXFileSystemProvider()
 		};
-
 	}
 
 	const { create } = await import('./vs/workbench/browser/web.factory.js');
