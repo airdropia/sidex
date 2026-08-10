@@ -95,6 +95,7 @@ sidex-src/                       git repo (origin Sidenai/sidex, fork airdropia/
 - `commands/lsp.rs`: registered but frontend integration thin (`sidexLspService.ts` only stops servers).
 - `commands/extension_wasm.rs`: ~40 registered commands; no frontend caller found in `src/vs/platform/sidex`.
 - `commands/index.rs`, `watch.rs`, `profiles.rs`, `secrets.rs`: registered, frontend usage not evident.
+- Remote dev UI: `sidexRemoteService.ts` was calling unregistered `remote_*` commands. Rewritten as a safe stub (empty listings, connect/exec throw "not supported").
 
 ### 4.5 Security validation coverage
 `commands/validation.rs` is wired into `fs.rs` (all 10 commands), `git.rs` (all commands), `search.rs` (all 6 commands), `watch.rs` (`watch_start` per-path), and `tasks.rs` (`task_spawn` cwd, `tasks_detect`, `tasks_parse_config`). Remaining path-taking surfaces not yet covered: `debug.rs`, `terminal.rs`, `extensions.rs`, `extension_wasm.rs`, `lsp.rs` — extend or explicitly justify per module. `validate_args` (NUL check for arg arrays) still has no call sites.
@@ -138,7 +139,7 @@ Per project rule: **no builds/tests on this machine**. All validation happens on
 2. Harden `sidex-asset` protocol with a base-directory allowlist — **done**: NUL/empty/dir/size guards + MIME whitelist (arbitrary user files intentionally served for editor preview).
 3. Archive extraction limits in extension install — **done**: entry count, per-entry size, total size, zip-slip rejection (test added).
 4. Decide the terminal story: keep `terminal.rs` as the single PTY path; mark `process.rs` `term_*` as extension-facing or remove.
-5. Fix or remove the remote stub (`sidexRemoteService.ts` / `remote_disconnect`).
+5. Fix or remove the remote stub (`sidexRemoteService.ts` / `remote_disconnect`) — **done**: service rewritten as safe stub, no unregistered `remote_*` commands called.
 6. Wire WASM/LSP/index/watch/profile/secrets surfaces to frontend or unregister until implemented.
 7. Tighten CI: run lint-rust on windows x64 with `-D warnings` (after fixing lints), remove `continue-on-error`, scope `udeps` to Windows, keep audit coverage.
 8. Drop macOS/Linux cruft: configs, entitlements, unix deps where safe.

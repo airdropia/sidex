@@ -1,16 +1,12 @@
 /*---------------------------------------------------------------------------------------------
- *  SideX — Remote development service.
- *  Thin TypeScript wrapper over the Tauri commands backed by the
- *  `sidex-remote` crate (SSH, WSL, Dev Containers, Codespaces).
+ *  SideX - Remote development service (stub).
  *
- *  Registration note: VS Code's IRemoteAgentService is already served by the
- *  `NullRemoteAgentService` (workbench/services/remote/browser/
- *  nullRemoteAgentService.ts) which delegates remote listing to this bridge.
- *  We additionally expose this bridge under its own decorator so UI code can
- *  access SSH / WSL / container / codespace management directly.
+ *  The remote backend (SSH / WSL / Dev Containers / Codespaces) is not
+ *  implemented in SideX. This service keeps the upstream remote UI alive
+ *  without calling unregistered Tauri commands: listings return empty,
+ *  connect/exec operations fail with a clear message.
  *--------------------------------------------------------------------------------------------*/
 
-import { invoke, isTauri } from '../../../sidex-bridge.js';
 import { createDecorator } from '../../instantiation/common/instantiation.js';
 import { InstantiationType, registerSingleton } from '../../instantiation/common/extensions.js';
 
@@ -68,79 +64,8 @@ export type SshAuth =
 	| { kind: 'keyfile'; path: string; passphrase?: string }
 	| { kind: 'agent' };
 
-interface RawSshHost {
-	host: string;
-	hostname: string | null;
-	port: number | null;
-	user: string | null;
-	identity_file: string | null;
-}
-
-interface RawWslDistro {
-	name: string;
-	is_default: boolean;
-	version: number;
-	state: string;
-}
-
-interface RawCodespace {
-	name: string;
-	display_name: string;
-	repository: string;
-	branch: string;
-	machine_type: string;
-	state: string;
-	created_at: string;
-	last_used: string;
-}
-
-interface RawConnection {
-	id: number;
-	kind: string;
-	label: string;
-	connected_secs: number;
-}
-
-interface RawExec {
-	stdout: string;
-	stderr: string;
-	exit_code: number;
-}
-
-function toHost(r: RawSshHost): SshHost {
-	return {
-		host: r.host,
-		hostname: r.hostname,
-		port: r.port,
-		user: r.user,
-		identityFile: r.identity_file
-	};
-}
-
-function toDistro(r: RawWslDistro): WslDistro {
-	return { name: r.name, isDefault: r.is_default, version: r.version, state: r.state };
-}
-
-function toCodespace(r: RawCodespace): CodespaceEntry {
-	return {
-		name: r.name,
-		displayName: r.display_name,
-		repository: r.repository,
-		branch: r.branch,
-		machineType: r.machine_type,
-		state: r.state,
-		createdAt: r.created_at,
-		lastUsed: r.last_used
-	};
-}
-
-function toConnection(r: RawConnection): RemoteConnection {
-	return {
-		id: r.id,
-		kind: r.kind as RemoteKind,
-		label: r.label,
-		connectedSecs: r.connected_secs
-	};
+function unsupported(): Error {
+	return new Error('Remote development is not supported in SideX yet');
 }
 
 export const ISideXRemoteService = createDecorator<ISideXRemoteService>('sidexRemoteService');
@@ -151,74 +76,49 @@ export interface ISideXRemoteService extends SideXRemoteService {
 
 export class SideXRemoteService {
 	declare readonly _serviceBrand: undefined;
+
 	async listSshHosts(): Promise<SshHost[]> {
-		if (!isTauri()) {
-			return [];
-		}
-		const raw = (await invoke<RawSshHost[]>('remote_list_ssh_hosts')) ?? [];
-		return raw.map(toHost);
+		return [];
 	}
 
 	async connectSsh(host: string, user: string, port: number | undefined, auth: SshAuth): Promise<RemoteConnection> {
-		const raw = await invoke<RawConnection>('remote_connect_ssh', {
-			host,
-			user,
-			port: port ?? null,
-			auth
-		});
-		return toConnection(raw);
+		throw unsupported();
 	}
 
 	async connectWsl(distro: string): Promise<RemoteConnection> {
-		const raw = await invoke<RawConnection>('remote_connect_wsl', { distro });
-		return toConnection(raw);
+		throw unsupported();
 	}
 
 	async connectContainer(configPath: string): Promise<RemoteConnection> {
-		const raw = await invoke<RawConnection>('remote_connect_container', { configPath });
-		return toConnection(raw);
+		throw unsupported();
 	}
 
 	async connectCodespace(name: string, githubToken: string): Promise<RemoteConnection> {
-		const raw = await invoke<RawConnection>('remote_connect_codespace', { name, githubToken });
-		return toConnection(raw);
+		throw unsupported();
 	}
 
 	async execSsh(connectionId: number, command: string): Promise<RemoteExecResult> {
-		const raw = await invoke<RawExec>('remote_exec_ssh', { connectionId, command });
-		return { stdout: raw.stdout, stderr: raw.stderr, exitCode: raw.exit_code };
+		throw unsupported();
 	}
 
 	async listWslDistros(): Promise<WslDistro[]> {
-		if (!isTauri()) {
-			return [];
-		}
-		const raw = (await invoke<RawWslDistro[]>('remote_list_wsl_distros')) ?? [];
-		return raw.map(toDistro);
+		return [];
 	}
 
 	async listContainers(): Promise<ContainerEntry[]> {
-		if (!isTauri()) {
-			return [];
-		}
-		return (await invoke<ContainerEntry[]>('remote_list_containers')) ?? [];
+		return [];
 	}
 
 	async listCodespaces(githubToken: string): Promise<CodespaceEntry[]> {
-		const raw = (await invoke<RawCodespace[]>('remote_codespaces_list', { githubToken })) ?? [];
-		return raw.map(toCodespace);
+		return [];
 	}
 
 	async disconnect(connectionId: number): Promise<void> {
-		await invoke('remote_disconnect', { connectionId });
+		throw unsupported();
 	}
 
 	async activeConnections(): Promise<RemoteConnection[]> {
-		if (!isTauri()) {
-			return [];
-		}
-		const raw = (await invoke<RawConnection[]>('remote_active_connections')) ?? [];
-		return raw.map(toConnection);
+		return [];
 	}
 }
 
