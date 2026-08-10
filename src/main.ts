@@ -74,7 +74,6 @@ async function boot() {
 			fileSystem: new SideXFileSystemProvider()
 		};
 
-		console.log('[SideX] Rust bridge services initialized');
 	}
 
 	const { create } = await import('./vs/workbench/browser/web.factory.js');
@@ -219,11 +218,6 @@ async function boot() {
 	setupWindowsEditorNewlineKeybindings();
 	updateNativeMenuLabels();
 
-	console.log(
-		'[SideX] Workbench created' + (folderParam ? ` (folder: ${folderParam})` : ' (no folder)'),
-		'workspace:',
-		workspace
-	);
 }
 
 function setupTauriExternalOpener() {
