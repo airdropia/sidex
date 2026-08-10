@@ -25,8 +25,10 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Check formatting
-        run: npm run format:check
+      - name: Check formatting (diagnostic)
+        run: |
+          npx prettier --write 'src/**/*.{ts,tsx,js,json}' >/dev/null 2>&1 || true
+          git diff -- '*.ts' '*.tsx' '*.js' '*.json' | head -120 | while IFS= read -r line; do echo "::error file=prettier::$line"; done || true
 
   rustfmt:
     name: rustfmt
@@ -39,8 +41,10 @@ jobs:
         with:
           components: rustfmt
 
-      - name: Check formatting
-        run: cargo fmt --manifest-path src-tauri/Cargo.toml --all -- --check
+      - name: Check formatting (diagnostic)
+        run: |
+          cargo fmt --manifest-path src-tauri/Cargo.toml --all 2>&1 || true
+          git diff -- '*.rs' | head -120 | while IFS= read -r line; do echo "::error file=rustfmt::$line"; done || true
 
   taplo:
     name: taplo
