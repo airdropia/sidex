@@ -216,7 +216,6 @@ async function boot() {
 	setupNativeWindowDragging();
 	setupWindowsEditorNewlineKeybindings();
 	updateNativeMenuLabels();
-
 }
 
 function setupTauriExternalOpener() {
