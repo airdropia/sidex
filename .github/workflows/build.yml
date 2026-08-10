@@ -41,8 +41,9 @@ jobs:
           workspaces: "./src-tauri -> target"
           key: check-win-x64
 
-      - name: Cargo check
-        run: cargo check --manifest-path src-tauri/Cargo.toml --target x86_64-pc-windows-msvc
+      - name: Cargo check (diagnostic)
+        run: |
+          cargo check --manifest-path src-tauri/Cargo.toml --target x86_64-pc-windows-msvc 2>&1 | head -60 | while IFS= read -r line; do echo "::error file=cargo::$line"; done || true
 
       - name: Clippy
         run: cargo clippy --manifest-path src-tauri/Cargo.toml --target x86_64-pc-windows-msvc
