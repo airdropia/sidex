@@ -74,7 +74,7 @@ impl ExtensionPlatformSupervisor {
     pub fn ensure_started(
         &self,
         app: &AppHandle,
-        _init_data_json: &str,
+        init_data_json: &str,
         _extension_search_paths: &[String],
     ) -> Result<u16, String> {
         let mut guard = self.inner.lock().map_err(|e| e.to_string())?;
@@ -85,7 +85,7 @@ impl ExtensionPlatformSupervisor {
             guard.total_crashes += 1;
             guard.session = None;
         }
-        let started = spawn_host_process(app, &[])?;
+        let started = spawn_host_process(app, init_data_json)?;
         let port = started.port;
         guard.session = Some(ExtHostSession {
             child: started.child,
@@ -217,7 +217,7 @@ struct StartedSession {
 #[allow(clippy::too_many_lines)]
 fn spawn_host_process(
     app: &AppHandle,
-    workspace_folders: &[String],
+    init_data_json: &str,
 ) -> Result<StartedSession, String> {
     let runtime = resolve_node_runtime(app)?;
     let server_js = normalize_for_node(resolve_server_script(app));
@@ -236,7 +236,7 @@ fn spawn_host_process(
 
     let manifests = scan_extensions(app, &search_paths);
     let descriptions = build_extension_descriptions(&manifests);
-    let init_data = build_init_data(&descriptions, workspace_folders);
+    let init_data = build_init_data(&descriptions, &[]);
     let session_id = uuid::Uuid::new_v4().to_string();
 
     log::info!("extensions directory: {}", user_ext_dir.display());
@@ -250,9 +250,6 @@ fn spawn_host_process(
         manifests.len(),
         search_paths.len()
     );
-
-    let init_data_json = serde_json::to_string(&init_data)
-        .map_err(|e| format!("failed to serialize init data: {e}"))?;
 
     let search_paths_json = serde_json::to_string(
         &search_paths
