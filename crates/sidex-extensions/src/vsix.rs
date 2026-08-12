@@ -69,9 +69,9 @@ pub fn unpack_vsix(vsix_path: &Path) -> Result<VsixPackage> {
         .with_context(|| format!("failed to open .vsix: {}", vsix_path.display()))?;
     let mut archive = zip::ZipArchive::new(file).context("failed to read .vsix as ZIP")?;
 
-    const MAX_ARCHIVE_ENTRIES: usize = 2048;
-    const MAX_ENTRY_BYTES: u64 = 64 * 1024 * 1024;
-    const MAX_TOTAL_BYTES: u64 = 256 * 1024 * 1024;
+    const MAX_ARCHIVE_ENTRIES: usize = 10000;
+    const MAX_ENTRY_BYTES: u64 = 256 * 1024 * 1024;
+    const MAX_TOTAL_BYTES: u64 = 512 * 1024 * 1024;
 
     if archive.len() > MAX_ARCHIVE_ENTRIES {
         anyhow::bail!(
