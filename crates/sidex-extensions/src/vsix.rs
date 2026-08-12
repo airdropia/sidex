@@ -402,7 +402,7 @@ mod tests {
         let file = std::fs::File::create(&vsix_path).expect("create vsix");
         let mut writer = zip::ZipWriter::new(file);
         let options = zip::write::SimpleFileOptions::default();
-        for i in 0..2049u32 {
+        for i in 0..10001u32 {
             writer
                 .start_file(format!("extension/payload-{i}.js"), options)
                 .expect("start file");
