@@ -94,7 +94,8 @@ pub fn unpack_vsix(vsix_path: &Path) -> Result<VsixPackage> {
     for i in 0..archive.len() {
         let mut entry = archive.by_index(i)?;
         let Some(name) = entry.enclosed_name() else {
-            anyhow::bail!("VSIX contains an entry that escapes the archive root");
+            log::warn!("skipping unsafe VSIX entry: {}", entry.name());
+            continue;
         };
         let name_str = name.to_string_lossy().to_string();
 

@@ -16,49 +16,13 @@ use crate::marketplace::MarketplaceClient;
 /// A `.vsix` is a ZIP archive whose `extension/` subtree contains the
 /// extension files and `extension/package.json` is the manifest.
 pub fn install_from_vsix(vsix_path: &Path, target_dir: &Path) -> Result<ExtensionManifest> {
-    let file = std::fs::File::open(vsix_path).context("failed to open .vsix file")?;
-    let mut archive = zip::ZipArchive::new(file).context("failed to read .vsix as ZIP")?;
-
-    let manifest_json = {
-        let mut manifest_file = archive
-            .by_name("extension/package.json")
-            .context("missing extension/package.json in .vsix")?;
-        let mut buf = Vec::new();
-        std::io::Read::read_to_end(&mut manifest_file, &mut buf)?;
-        decode_manifest_text(&buf)?
-    };
-
-    let manifest: ExtensionManifest =
-        serde_json::from_str(&manifest_json).context("invalid package.json in .vsix")?;
-    let ext_dir = target_dir.join(manifest.canonical_id());
-    std::fs::create_dir_all(&ext_dir)?;
-
-    for i in 0..archive.len() {
-        let mut entry = archive.by_index(i)?;
-        let Some(name) = entry.enclosed_name() else {
-            continue;
-        };
-        let name_str = name.to_string_lossy();
-        let Some(rel) = name_str.strip_prefix("extension/") else {
-            continue;
-        };
-        if rel.is_empty() {
-            continue;
-        }
-
-        let out_path = ext_dir.join(rel);
-        if entry.is_dir() {
-            std::fs::create_dir_all(&out_path)?;
-        } else {
-            if let Some(parent) = out_path.parent() {
-                std::fs::create_dir_all(parent)?;
-            }
-            let mut out_file = std::fs::File::create(&out_path)?;
-            std::io::copy(&mut entry, &mut out_file)?;
-        }
+    let pkg = crate::vsix::unpack_vsix(vsix_path)?;
+    let validation = crate::vsix::validate_vsix(&pkg);
+    if !validation.valid {
+        anyhow::bail!("VSIX validation failed: {}", validation.errors.join("; "));
     }
-
-    Ok(manifest)
+    let installed = crate::vsix::install_package(&pkg, target_dir)?;
+    Ok(installed.manifest)
 }
 
 /// Downloads and installs an extension from the marketplace.
