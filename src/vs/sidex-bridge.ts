@@ -20,6 +20,13 @@ function getInvoke(): ((cmd: string, args?: Record<string, unknown>) => Promise<
 	if (_invoke) {
 		return _invoke;
 	}
+	// Tauri 2.x injects `window.__TAURI_INTERNALS__.invoke` directly;
+	// older builds expose `window.__TAURI__.core.invoke`. Check both.
+	const internals = (window as any).__TAURI_INTERNALS__;
+	if (typeof internals?.invoke === 'function') {
+		_invoke = internals.invoke.bind(internals);
+		return _invoke;
+	}
 	if (window.__TAURI__?.core?.invoke) {
 		_invoke = window.__TAURI__.core.invoke;
 		return _invoke;
