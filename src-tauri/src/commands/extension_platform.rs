@@ -332,7 +332,12 @@ pub fn bundled_node_candidates(app: &AppHandle) -> Vec<PathBuf> {
     }
 
     let resource_candidates = if cfg!(target_os = "windows") {
-        vec!["extension-host/node.exe", "node/node.exe", "bin/node.exe", "node.exe"]
+        vec![
+            "extension-host/node.exe",
+            "node/node.exe",
+            "bin/node.exe",
+            "node.exe",
+        ]
     } else {
         vec!["node/bin/node", "bin/node", "node"]
     };
