@@ -1,6 +1,6 @@
 [package]
 name = "sidex"
-version = "0.2.0"
+version = "0.2.1"
 description = "SideX - A fast, open-source code editor"
 authors = ["Siden Technologies Inc"]
 license = "MIT"
