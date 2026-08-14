@@ -1,0 +1,178 @@
+{
+  "repo": {
+    "name": "winsidex",
+    "full_name": "airdropia/winsidex",
+    "url": "https://github.com/airdropia/winsidex.git",
+    "description": "VS Code rebuilt on Tauri. Same architecture, 96% smaller.",
+    "default_branch": "main",
+    "upstream": "https://github.com/Sidenai/sidex.git",
+    "original_repo": "Sidenai/sidex",
+    "forked_at": "2026-08-09T09:16:52Z",
+    "created_at": "2026-08-09T09:16:52Z"
+  },
+  "current_state": {
+    "branch": "feat/bundle-node",
+    "working_tree": "clean",
+    "latest_commit": "c8b260f6",
+    "latest_commit_message": "chore: bump version to 0.2.1",
+    "last_push": "2026-08-14T21:24:08Z"
+  },
+  "version": {
+    "current": "0.2.1",
+    "latest_tag": "v0.2.1",
+    "previous_tag": "v0.2.0"
+  },
+  "releases": [
+    {
+      "tag": "v0.2.1",
+      "published_at": "2026-08-14T19:53:32Z",
+      "status": "success",
+      "ci_run": "Release (Windows x64)"
+    },
+    {
+      "tag": "v0.2.0",
+      "published_at": "2026-08-14T17:43:16Z",
+      "status": "success"
+    }
+  ],
+  "prs": [
+    {
+      "number": 4,
+      "title": "fix: track entry count manually in unpack_vsix (zip crate len() bug)",
+      "state": "OPEN",
+      "branch": "feat/bundle-node",
+      "created_at": "2026-08-14T19:16:56Z",
+      "notes": "Fixes unpack_rejects_archive_with_too_many_entries test. Manual entry_count counter added due to zip crate v2.4.2 len() bug returning 0 for archives >10000 entries."
+    },
+    {
+      "number": 3,
+      "title": "fix: unify Tauri package version to 0.2.0",
+      "state": "MERGED",
+      "branch": "feat/bundle-node",
+      "merged_at": "2026-08-14T17:53:13Z"
+    },
+    {
+      "number": 2,
+      "title": "feat: bundle Node.js runtime in Windows releases",
+      "state": "MERGED",
+      "branch": "feat/bundle-node",
+      "merged_at": "2026-08-14T16:41:15Z"
+    },
+    {
+      "number": 1,
+      "title": "fix: restore Open VSX marketplace client with hardened download retries",
+      "state": "MERGED",
+      "branch": "fix/extensions-build",
+      "merged_at": "2026-08-14T10:56:14Z"
+    }
+  ],
+  "ci_status": {
+    "last_runs": [
+      {
+        "name": "Release (Windows x64)",
+        "conclusion": "success",
+        "branch": "v0.2.1",
+        "created_at": "2026-08-14T21:24:09Z"
+      },
+      {
+        "name": "Build Check (Windows x64)",
+        "conclusion": "success",
+        "branch": "main",
+        "created_at": "2026-08-14T21:23:46Z"
+      },
+      {
+        "name": "Unused Dependencies",
+        "conclusion": "success",
+        "branch": "main",
+        "created_at": "2026-08-14T21:23:46Z"
+      },
+      {
+        "name": "Lint Rust",
+        "conclusion": "success",
+        "branch": "main",
+        "created_at": "2026-08-14T21:23:46Z"
+      },
+      {
+        "name": "Tests (Windows x64)",
+        "conclusion": "success",
+        "branch": "main",
+        "created_at": "2026-08-14T21:23:46Z"
+      }
+    ],
+    "all_green": true
+  },
+  "git_log": [
+    {
+      "hash": "c8b260f6",
+      "message": "chore: bump version to 0.2.1",
+      "date": "2026-08-14"
+    },
+    {
+      "hash": "9f39c41c",
+      "message": "fix: track entry count manually in unpack_vsix (zip crate len() bug)",
+      "date": "2026-08-14"
+    },
+    {
+      "hash": "b5f75c74",
+      "message": "Merge pull request #3 from airdropia/feat/bundle-node",
+      "date": "2026-08-14"
+    },
+    {
+      "hash": "dcbacb39",
+      "message": "fix: unify Tauri package version to 0.2.0",
+      "date": "2026-08-14"
+    },
+    {
+      "hash": "8f013532",
+      "message": "Merge pull request #2 from airdropia/feat/bundle-node",
+      "date": "2026-08-14"
+    },
+    {
+      "hash": "e364a129",
+      "message": "style: format bundled Node candidate list",
+      "date": "2026-08-14"
+    },
+    {
+      "hash": "27f27180",
+      "message": "fix: keep bundled Node resource optional during CI checks",
+      "date": "2026-08-14"
+    },
+    {
+      "hash": "412cef61",
+      "message": "fix: correct Tauri resource JSON",
+      "date": "2026-08-14"
+    },
+    {
+      "hash": "2da3591f",
+      "message": "feat: bundle Node.js runtime in Windows releases",
+      "date": "2026-08-14"
+    },
+    {
+      "hash": "e41b3d9b",
+      "message": "Merge pull request #1 from airdropia/fix/extensions-build",
+      "date": "2026-08-14"
+    }
+  ],
+  "policies": {
+    "work_on_fork": true,
+    "fork_url": "https://github.com/airdropia/winsidex.git",
+    "original_repo": "Sidenai/sidex",
+    "original_repo_url": "https://github.com/Sidenai/sidex.git",
+    "policy": "All PRs, issues, and work go to fork (airdropia/winsidex). Do NOT create PRs on original repo (Sidenai/sidex). Upstream sync via rebase if needed.",
+    "ci_is_truth": true,
+    "local_builds": false,
+    "language": "Roman Urdu for user communication, English for code"
+  },
+  "tech_stack": {
+    "frontend": "TypeScript, Vite 6, Monaco Editor",
+    "backend": "Rust, Tauri 2",
+    "terminal": "portable-pty",
+    "syntax": "vscode-textmate + vscode-oniguruma (WASM)",
+    "search": "dashmap + rayon + regex (parallel)",
+    "storage": "SQLite via rusqlite",
+    "extensions": "VSIX format, Open VSX marketplace"
+  },
+  "target_platform": "Windows 10 x64 only",
+  "architecture": "Tauri 2 (Electron replacement, native webview)",
+  "license": "MIT"
+}
