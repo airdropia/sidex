@@ -49,9 +49,9 @@ jobs:
           $expanded = Join-Path $env:RUNNER_TEMP "node-expanded"
           Invoke-WebRequest -Uri "https://nodejs.org/dist/v$version/node-v$version-win-x64.zip" -OutFile $zip
           Expand-Archive -Path $zip -DestinationPath $expanded -Force
-          New-Item -ItemType Directory -Path "src-tauri/node" -Force | Out-Null
-          Copy-Item "$expanded/node-v$version-win-x64/node.exe" "src-tauri/node/node.exe" -Force
-          if (-not (Test-Path "src-tauri/node/node.exe")) { throw "Bundled Node runtime missing" }
+          New-Item -ItemType Directory -Path "src-tauri/extension-host" -Force | Out-Null
+          Copy-Item "$expanded/node-v$version-win-x64/node.exe" "src-tauri/extension-host/node.exe" -Force
+          if (-not (Test-Path "src-tauri/extension-host/node.exe")) { throw "Bundled Node runtime missing" }
 
       - name: Build frontend
         env:
