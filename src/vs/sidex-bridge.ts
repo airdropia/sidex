@@ -1,48 +1,55 @@
 /*---------------------------------------------------------------------------------------------
  *  SideX — Low-level Tauri IPC bridge.
- *  Wraps `window.__TAURI__` with a graceful fallback when running outside
- *  the Tauri webview (e.g. in a plain browser during development).
+ *  Uses the official Tauri 2 API. Global fallbacks support older development shells.
  *--------------------------------------------------------------------------------------------*/
+
+import { invoke as tauriInvoke } from '@tauri-apps/api/core';
 
 declare global {
 	interface Window {
 		__TAURI__?: {
-			core: {
-				invoke: (cmd: string, args?: Record<string, unknown>) => Promise<unknown>;
+			core?: {
+				invoke?: (cmd: string, args?: Record<string, unknown>) => Promise<unknown>;
 			};
+		};
+		__TAURI_INTERNALS__?: {
+			invoke?: (cmd: string, args?: Record<string, unknown>) => Promise<unknown>;
 		};
 	}
 }
 
 let _invoke: ((cmd: string, args?: Record<string, unknown>) => Promise<unknown>) | null = null;
 
-function getInvoke(): ((cmd: string, args?: Record<string, unknown>) => Promise<unknown>) | null {
+function getInvoke(): (cmd: string, args?: Record<string, unknown>) => Promise<unknown> {
 	if (_invoke) {
 		return _invoke;
 	}
-	// Tauri 2.x injects `window.__TAURI_INTERNALS__.invoke` directly;
-	// older builds expose `window.__TAURI__.core.invoke`. Check both.
-	const internals = (window as any).__TAURI_INTERNALS__;
-	if (typeof internals?.invoke === 'function') {
-		_invoke = internals.invoke.bind(internals);
+
+	const internals = window.__TAURI_INTERNALS__?.invoke;
+	if (typeof internals === 'function') {
+		_invoke = internals.bind(window.__TAURI_INTERNALS__);
 		return _invoke;
 	}
-	if (window.__TAURI__?.core?.invoke) {
-		_invoke = window.__TAURI__.core.invoke;
+
+	const globalInvoke = window.__TAURI__?.core?.invoke;
+	if (typeof globalInvoke === 'function') {
+		_invoke = globalInvoke.bind(window.__TAURI__?.core);
 		return _invoke;
 	}
-	return null;
+
+	_invoke = tauriInvoke;
+	return _invoke;
 }
 
-export async function invoke<T = any>(cmd: string, args: Record<string, unknown> = {}): Promise<T> {
-	const fn = getInvoke();
-	if (!fn) {
-		console.warn(`[SideX] invoke(${cmd}) — Tauri not available`);
-		return null as unknown as T;
+export async function invoke<T = unknown>(cmd: string, args: Record<string, unknown> = {}): Promise<T> {
+	try {
+		return (await getInvoke()(cmd, args)) as T;
+	} catch (error) {
+		const message = error instanceof Error ? error.message : String(error);
+		throw new Error(`[SideX] Tauri command '${cmd}' failed: ${message}`);
 	}
-	return fn(cmd, args) as Promise<T>;
 }
 
 export function isTauri(): boolean {
-	return !!getInvoke();
+	return typeof getInvoke() === 'function';
 }

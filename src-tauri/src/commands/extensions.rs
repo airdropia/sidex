@@ -132,6 +132,12 @@ pub async fn install_extension_from_marketplace(
             .map_err(|e| format!("marketplace install: {e:#}"))?;
     let safe_id = sanitize_ext_id(&installed.canonical_id()).map_err(|e| format!("{e:#}"))?;
     let ext_dir = target_dir.join(&safe_id);
+    if !ext_dir.join("package.json").is_file() {
+        return Err(format!(
+            "marketplace install completed without manifest: {}",
+            ext_dir.display()
+        ));
+    }
     log::info!("installed extension {safe_id} to {}", ext_dir.display());
     let _ = app.emit("extensions://changed", &safe_id);
     Ok(to_installed(&installed, &ext_dir))
