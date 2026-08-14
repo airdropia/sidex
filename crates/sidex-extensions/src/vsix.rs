@@ -81,6 +81,7 @@ pub fn unpack_vsix(vsix_path: &Path) -> Result<VsixPackage> {
     }
 
     let mut total_bytes: u64 = 0;
+    let mut entry_count: usize = 0;
 
     let mut manifest_json: Option<String> = None;
     let mut vsix_manifest_xml: Option<String> = None;
@@ -92,6 +93,13 @@ pub fn unpack_vsix(vsix_path: &Path) -> Result<VsixPackage> {
     let mut modes: HashMap<String, u32> = HashMap::new();
 
     for i in 0..archive.len() {
+        entry_count += 1;
+        if entry_count > MAX_ARCHIVE_ENTRIES {
+            anyhow::bail!(
+                "VSIX contains too many entries ({} > {MAX_ARCHIVE_ENTRIES})",
+                entry_count
+            );
+        }
         let mut entry = archive.by_index(i)?;
         let Some(name) = entry.enclosed_name() else {
             log::warn!("skipping unsafe VSIX entry: {}", entry.name());
