@@ -74,7 +74,21 @@ export class TauriFileSystemProvider extends Disposable implements IFileSystemPr
 			return decodeURIComponent(resource.path);
 		}
 		if (resource.scheme === 'sidex-asset') {
-			return decodeURIComponent(resource.path);
+			let path = resource.path;
+			// If the path starts with a raw Windows drive letter (e.g. /c:/ or c:/),
+			// decodeURIComponent may not work properly. Normalize by stripping
+			// leading slash and then using the raw path.
+			if (path.startsWith('/') && path.length > 2 && path[2] === ':') {
+				// It's a raw Windows path like /c:/Users/... -> return as-is after removing leading slash
+				return path.substring(1);
+			}
+			// If it's already percent-encoded, decode it
+			try {
+				return decodeURIComponent(path);
+			} catch {
+				// If decoding fails, return the path as-is (might be raw)
+				return path;
+			}
 		}
 		return resource.fsPath;
 	}

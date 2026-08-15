@@ -683,7 +683,7 @@ export abstract class AbstractExtHostExtensionService extends Disposable impleme
 					return extensionDescription.extensionLocation;
 				},
 				get extensionPath() {
-					return extensionDescription.extensionLocation.fsPath;
+					return extensionDescription.extensionLocation.toString();
 				},
 				asAbsolutePath(relativePath: string) {
 					return path.join(extensionDescription.extensionLocation.fsPath, relativePath);
