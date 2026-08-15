@@ -259,14 +259,18 @@ export class Extension implements IExtension {
 
 	private get localIconUrl(): string | undefined {
 		if (this.local && this.local.manifest.icon) {
-			return FileAccess.uriToBrowserUri(resources.joinPath(this.local.location, this.local.manifest.icon)).toString(true);
+			const uri = resources.joinPath(this.local.location, this.local.manifest.icon);
+			// Use vscode-file:// scheme for local extension icons so they work
+			// in <img> tags without mixed-content issues from sidex-asset://
+			return uri.with({ scheme: 'vscode-file', authority: 'localhost' }).toString(true);
 		}
 		return undefined;
 	}
 
 	private get resourceExtensionIconUrl(): string | undefined {
 		if (this.resourceExtension?.manifest.icon) {
-			return FileAccess.uriToBrowserUri(resources.joinPath(this.resourceExtension.location, this.resourceExtension.manifest.icon)).toString(true);
+			const uri = resources.joinPath(this.resourceExtension.location, this.resourceExtension.manifest.icon);
+			return uri.with({ scheme: 'vscode-file', authority: 'localhost' }).toString(true);
 		}
 		return undefined;
 	}

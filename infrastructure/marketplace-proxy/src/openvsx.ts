@@ -53,6 +53,7 @@ export function normalizeOpenVsxItem(item: OpenVsxSearchItem): NormalizedExtensi
 export async function searchOpenVsx(
 	query: string,
 	pageSize: number,
+	targetPlatform: string | null,
 	signal: AbortSignal
 ): Promise<{ items: NormalizedExtension[]; total: number }> {
 	const url = new URL(`${OPEN_VSX_BASE}/api/-/search`);
@@ -74,6 +75,34 @@ export async function searchOpenVsx(
 		throw new Error(`open-vsx ${res.status}`);
 	}
 	const json = (await res.json()) as OpenVsxSearchResponse;
-	const items = (json.extensions ?? []).map(normalizeOpenVsxItem).filter((e): e is NormalizedExtension => !!e);
+	let items = (json.extensions ?? []).map(normalizeOpenVsxItem).filter((e): e is NormalizedExtension => !!e);
+
+	// Filter by target platform if specified
+	if (targetPlatform) {
+		items = filterByTargetPlatform(items, targetPlatform);
+	}
+
 	return { items, total: json.totalSize ?? items.length };
+}
+
+/**
+ * Filters Open VSX extensions by target platform.
+ * Open VSX URLs contain the platform in the path:
+ *   https://open-vsx.org/api/{ns}/{name}/{platform}/{version}/file/...
+ */
+function filterByTargetPlatform(items: NormalizedExtension[], targetPlatform: string): NormalizedExtension[] {
+	// Try to find an exact match first
+	const exactMatch = items.filter(item => item.downloadUrl.includes(`/${targetPlatform}/`));
+	if (exactMatch.length > 0) {
+		return exactMatch;
+	}
+
+	// If no exact match, try without platform (universal extensions)
+	const universal = items.filter(item => !item.downloadUrl.match(/\/(win32|x64|arm64|linux|darwin|alpine)[^/]*\//));
+	if (universal.length > 0) {
+		return universal;
+	}
+
+	// Fallback: return first item (allows install to proceed even without perfect match)
+	return items.slice(0, 1);
 }

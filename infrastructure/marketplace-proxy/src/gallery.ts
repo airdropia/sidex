@@ -49,6 +49,17 @@ interface GalleryQueryBody {
 const FILTER_SEARCH_TEXT = 10;
 const FILTER_EXTENSION_IDS = 4;
 const FILTER_EXTENSION_NAMES = 7;
+const FILTER_TARGET_PLATFORM = 9; // VS Code filter type for target platform
+
+// Target platform string to Open VSX API path segment mapping
+const TARGET_PLATFORM_MAP: Record<string, string> = {
+	'win32-x64': 'win32-x64',
+	'win32-arm64': 'win32-arm64',
+	'linux-x64': 'linux-x64',
+	'linux-arm64': 'linux-arm64',
+	'darwin-x64': 'darwin-x64',
+	'darwin-arm64': 'darwin-arm64'
+};
 
 // ---------------------------------------------------------------------------
 // Upstream fetch helpers (reuse the existing raw fetchers from ms.ts / openvsx.ts)
@@ -326,13 +337,17 @@ export async function handleGalleryQuery(request: Request, origin: string): Prom
 		return { body: JSON.stringify(raw), total: pageSize };
 	}
 
+	// Extract target platform from query filters (filterType 9)
+	const targetPlatformFilter = filter.criteria.find(c => c.filterType === FILTER_TARGET_PLATFORM);
+	const targetPlatform = targetPlatformFilter?.value ?? null;
+
 	// Standard search: fan out to both backends.
 	const controller = new AbortController();
 	const timeout = setTimeout(() => controller.abort(), UPSTREAM_TIMEOUT_MS);
 
 	const [msResult, ovsxResult] = await Promise.allSettled([
 		fetchMsGallery(queryBody, controller.signal),
-		fetchOpenVsx(query, pageSize, controller.signal)
+		fetchOpenVsx(query, pageSize, targetPlatform, controller.signal)
 	]);
 	clearTimeout(timeout);
 

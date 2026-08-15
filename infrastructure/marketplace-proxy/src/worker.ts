@@ -292,7 +292,7 @@ async function runSearch(
 	const timeout = setTimeout(() => controller.abort(), UPSTREAM_TIMEOUT_MS);
 	const [msResult, ovsxResult] = await Promise.allSettled([
 		searchMicrosoftMarketplace(query, pageSize, controller.signal),
-		searchOpenVsx(query, pageSize, controller.signal)
+		searchOpenVsx(query, pageSize, null, controller.signal)
 	]);
 	clearTimeout(timeout);
 
