@@ -73,6 +73,9 @@ export class TauriFileSystemProvider extends Disposable implements IFileSystemPr
 		if (resource.scheme === 'vscode-file') {
 			return decodeURIComponent(resource.path);
 		}
+		if (resource.scheme === 'sidex-asset') {
+			return decodeURIComponent(resource.path);
+		}
 		return resource.fsPath;
 	}
 

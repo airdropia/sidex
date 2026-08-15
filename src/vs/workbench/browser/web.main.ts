@@ -623,6 +623,10 @@ export class BrowserMain extends Disposable {
 			const vscodeFileProvider = new TauriFileSystemProvider();
 			fileService.registerProvider(Schemas.vscodeFileResource, vscodeFileProvider);
 			logService.info('[SideX] Registered TauriFileSystemProvider for vscode-file:// scheme');
+
+			const sidexAssetProvider = new TauriFileSystemProvider();
+			fileService.registerProvider('sidex-asset', sidexAssetProvider);
+			logService.info('[SideX] Registered TauriFileSystemProvider for sidex-asset:// scheme');
 		} else {
 			const userDataProvider = new InMemoryFileSystemProvider();
 			fileService.registerProvider(Schemas.vscodeUserData, userDataProvider);
