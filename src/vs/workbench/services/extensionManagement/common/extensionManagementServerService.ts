@@ -1,7 +1,17 @@
 /*---------------------------------------------------------------------------------------------
- *  Copyright (c) Microsoft Corporation. All rights reserved.
- *  Licensed under the MIT License. See License.txt in the project root for license information.
- *--------------------------------------------------------------------------------------------*/
+ *  SideX — Extension Management Server Service for Tauri builds.
+ *
+ *  Unlike the default web-only implementation, this registers a LOCAL
+ *  extension management server so that all extension UI features work:
+ *    - "Install from VSIX..." menu item appears
+ *    - Extensions panel can install/uninstall local extensions
+ *    - Context keys CONTEXT_HAS_LOCAL_SERVER / CONTEXT_HAS_REMOTE_SERVER
+ *      become true, un-hiding extension actions.
+ *
+ *  The actual I/O is handled by WebExtensionManagementService with
+ *  file-system operations routed through the Tauri FileSystemProvider
+ *  registered in web.main.ts.
+ *---------------------------------------------------------------------------------------------*/
 
 import { localize } from '../../../../nls.js';
 import {
@@ -23,7 +33,23 @@ export class ExtensionManagementServerService implements IExtensionManagementSer
 	readonly webExtensionManagementServer: IExtensionManagementServer | null = null;
 
 	constructor(@IInstantiationService instantiationService: IInstantiationService) {
-		if (isWeb) {
+		const isTauri =
+			typeof (globalThis as any).__TAURI_INTERNALS__ !== 'undefined' ||
+			typeof (globalThis as any).__TAURI__ !== 'undefined' ||
+			(globalThis as any).__SIDEX_TAURI__ === true;
+
+		if (isTauri) {
+			// Register a local server for native Tauri mode
+			// WebExtensionManagementService uses the registered TauriFileSystemProvider
+			// for file I/O, so no changes needed there
+			const extensionManagementService = instantiationService.createInstance(WebExtensionManagementService);
+			this.localExtensionManagementServer = {
+				id: 'local',
+				extensionManagementService,
+				label: localize('local', 'Local')
+			};
+		} else if (isWeb) {
+			// Fallback to web-only behavior
 			const extensionManagementService = instantiationService.createInstance(WebExtensionManagementService);
 			this.webExtensionManagementServer = {
 				id: 'web',
@@ -33,7 +59,10 @@ export class ExtensionManagementServerService implements IExtensionManagementSer
 		}
 	}
 
-	getExtensionManagementServer(extension: IExtension): IExtensionManagementServer {
+	getExtensionManagementServer(extension: IExtension): IExtensionManagementServer | null {
+		if (this.localExtensionManagementServer) {
+			return this.localExtensionManagementServer;
+		}
 		if (this.webExtensionManagementServer) {
 			return this.webExtensionManagementServer;
 		}
@@ -41,7 +70,13 @@ export class ExtensionManagementServerService implements IExtensionManagementSer
 	}
 
 	getExtensionInstallLocation(_extension: IExtension): ExtensionInstallLocation | null {
-		return ExtensionInstallLocation.Web;
+		if (this.localExtensionManagementServer) {
+			return ExtensionInstallLocation.Local;
+		}
+		if (this.webExtensionManagementServer) {
+			return ExtensionInstallLocation.Web;
+		}
+		return null;
 	}
 }
 
