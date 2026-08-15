@@ -8,8 +8,9 @@
  *    - Context keys CONTEXT_HAS_LOCAL_SERVER / CONTEXT_HAS_REMOTE_SERVER
  *      become true, un-hiding extension actions.
  *
- *  The actual I/O is handled by TauriExtensionManagementService which
- *  delegates to native Tauri commands for VSIX installation.
+ *  The actual I/O is handled by WebExtensionManagementService with
+ *  file-system operations routed through the Tauri FileSystemProvider
+ *  registered in web.main.ts.
  *---------------------------------------------------------------------------------------------*/
 
 import { localize } from '../../../../nls.js';
@@ -21,8 +22,8 @@ import {
 import { InstantiationType, registerSingleton } from '../../../../platform/instantiation/common/extensions.js';
 import { isWeb } from '../../../../base/common/platform.js';
 import { IInstantiationService } from '../../../../platform/instantiation/common/instantiation.js';
+import { WebExtensionManagementService } from './webExtensionManagementService.js';
 import { IExtension } from '../../../../platform/extensions/common/extensions.js';
-import { TauriExtensionManagementService } from './tauriExtensionManagementService.js';
 
 export class ExtensionManagementServerService implements IExtensionManagementServerService {
 	declare readonly _serviceBrand: undefined;
@@ -38,8 +39,10 @@ export class ExtensionManagementServerService implements IExtensionManagementSer
 			(globalThis as any).__SIDEX_TAURI__ === true;
 
 		if (isTauri) {
-			// Register a local server using Tauri-backed service for VSIX support
-			const extensionManagementService = instantiationService.createInstance(TauriExtensionManagementService);
+			// Register a local server for native Tauri mode
+			// WebExtensionManagementService uses the registered TauriFileSystemProvider
+			// for file I/O, so no changes needed there
+			const extensionManagementService = instantiationService.createInstance(WebExtensionManagementService);
 			this.localExtensionManagementServer = {
 				id: 'local',
 				extensionManagementService,
@@ -47,14 +50,12 @@ export class ExtensionManagementServerService implements IExtensionManagementSer
 			};
 		} else if (isWeb) {
 			// Fallback to web-only behavior
-			import('./webExtensionManagementService.js').then(({ WebExtensionManagementService }) => {
-				const extensionManagementService = instantiationService.createInstance(WebExtensionManagementService);
-				this.webExtensionManagementServer = {
-					id: 'web',
-					extensionManagementService,
-					label: localize('browser', 'Browser')
-				};
-			});
+			const extensionManagementService = instantiationService.createInstance(WebExtensionManagementService);
+			this.webExtensionManagementServer = {
+				id: 'web',
+				extensionManagementService,
+				label: localize('browser', 'Browser')
+			};
 		}
 	}
 

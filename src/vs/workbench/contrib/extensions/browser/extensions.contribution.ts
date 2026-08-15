@@ -879,53 +879,32 @@ class ExtensionsContributions extends Disposable implements IWorkbenchContributi
 				when: ContextKeyExpr.and(ResourceContextKey.Extension.isEqualTo('.vsix'), ContextKeyExpr.or(CONTEXT_HAS_LOCAL_SERVER, CONTEXT_HAS_REMOTE_SERVER)),
 			}],
 			run: async (accessor: ServicesAccessor, resources: URI[] | URI) => {
-				const extensionsWorkbenchService = accessor.get(IExtensionsWorkbenchService);
-				const hostService = accessor.get(IHostService);
+				// Use Tauri command for local VSIX installation
+				const { invoke } = await import('@tauri-apps/api/core');
 				const notificationService = accessor.get(INotificationService);
+				const logService = accessor.get(ILogService);
 
 				const vsixs = Array.isArray(resources) ? resources : [resources];
-				const result = await Promise.allSettled(vsixs.map(async (vsix) => await extensionsWorkbenchService.install(vsix, { installGivenVersion: true })));
-				let error: Error | undefined, requireReload = false, requireRestart = false;
-				for (const r of result) {
-					if (r.status === 'rejected') {
-						error = new Error(r.reason);
-						break;
+				const results = await Promise.allSettled(vsixs.map(async (vsix) => {
+					const path = vsix.fsPath;
+					if (!path) {
+						throw new Error('VSIX path is not available');
 					}
-					requireReload = requireReload || r.value.runtimeState?.action === ExtensionRuntimeActionType.ReloadWindow;
-					requireRestart = requireRestart || r.value.runtimeState?.action === ExtensionRuntimeActionType.RestartExtensions;
+					logService.info(`[SideX] Installing extension from VSIX: ${path}`);
+					return await invoke<{ id: string; path: string }>('install_extension', { vsixPath: path });
+				}));
+
+				const errors = results.filter(r => r.status === 'rejected').map(r => (r as PromiseRejectedResult).reason);
+				if (errors.length > 0) {
+					const errorMsg = errors[0]?.message ?? String(errors[0]);
+					notificationService.error(localize('vsixInstallFailed', "Failed to install extension: {0}", errorMsg));
+					throw errors[0];
 				}
-				if (error) {
-					throw error;
-				}
-				if (requireReload) {
-					notificationService.prompt(
-						Severity.Info,
-						vsixs.length > 1 ? localize('InstallVSIXs.successReload', "Completed installing extensions. Please reload Visual Studio Code to enable them.")
-							: localize('InstallVSIXAction.successReload', "Completed installing extension. Please reload Visual Studio Code to enable it."),
-						[{
-							label: localize('InstallVSIXAction.reloadNow', "Reload Now"),
-							run: () => hostService.reload()
-						}]
-					);
-				}
-				else if (requireRestart) {
-					notificationService.prompt(
-						Severity.Info,
-						vsixs.length > 1 ? localize('InstallVSIXs.successRestart', "Completed installing extensions. Please restart extensions to enable them.")
-							: localize('InstallVSIXAction.successRestart', "Completed installing extension. Please restart extensions to enable it."),
-						[{
-							label: localize('InstallVSIXAction.restartExtensions', "Restart Extensions"),
-							run: () => extensionsWorkbenchService.updateRunningExtensions()
-						}]
-					);
-				}
-				else {
-					notificationService.prompt(
-						Severity.Info,
-						vsixs.length > 1 ? localize('InstallVSIXs.successNoReload', "Completed installing extensions.") : localize('InstallVSIXAction.successNoReload', "Completed installing extension."),
-						[]
-					);
-				}
+
+				const successCount = results.length - errors.length;
+				notificationService.info(
+					localize('vsixInstallSuccess', "Successfully installed {0} extension(s) from VSIX.", successCount)
+				);
 			}
 		});
 
