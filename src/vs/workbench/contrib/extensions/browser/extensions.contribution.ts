@@ -879,10 +879,11 @@ class ExtensionsContributions extends Disposable implements IWorkbenchContributi
 				when: ContextKeyExpr.and(ResourceContextKey.Extension.isEqualTo('.vsix'), ContextKeyExpr.or(CONTEXT_HAS_LOCAL_SERVER, CONTEXT_HAS_REMOTE_SERVER)),
 			}],
 			run: async (accessor: ServicesAccessor, resources: URI[] | URI) => {
-				// Use Tauri command for local VSIX installation
-				const { invoke } = await import('@tauri-apps/api/core');
+				// IMPORTANT: accessor.get() MUST be called synchronously before any await.
+				// The ServicesAccessor is invalidated as soon as the async function yields
+				// (returns its first Promise). See instantiationService.ts invokeFunction().
 				const notificationService = accessor.get(INotificationService);
-				const logService = accessor.get(ILogService);
+				const { invoke } = await import('@tauri-apps/api/core');
 
 				const vsixs = Array.isArray(resources) ? resources : [resources];
 				const results = await Promise.allSettled(vsixs.map(async (vsix) => {
@@ -890,7 +891,6 @@ class ExtensionsContributions extends Disposable implements IWorkbenchContributi
 					if (!path) {
 						throw new Error('VSIX path is not available');
 					}
-					logService.info(`[SideX] Installing extension from VSIX: ${path}`);
 					return await invoke<{ id: string; path: string }>('install_extension', { vsixPath: path });
 				}));
 
