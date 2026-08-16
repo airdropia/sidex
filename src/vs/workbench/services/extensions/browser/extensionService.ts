@@ -5,10 +5,11 @@
 
 import { mainWindow } from '../../../../base/browser/window.js';
 import { Schemas } from '../../../../base/common/network.js';
+import { URI } from '../../../../base/common/uri.js';
 import { IConfigurationService } from '../../../../platform/configuration/common/configuration.js';
 import { IDialogService } from '../../../../platform/dialogs/common/dialogs.js';
 import { ExtensionKind } from '../../../../platform/environment/common/environment.js';
-import { ExtensionIdentifier, IExtensionDescription } from '../../../../platform/extensions/common/extensions.js';
+import { ExtensionIdentifier, IExtensionDescription, TargetPlatform } from '../../../../platform/extensions/common/extensions.js';
 import { IFileService } from '../../../../platform/files/common/files.js';
 import { InstantiationType, registerSingleton } from '../../../../platform/instantiation/common/extensions.js';
 import { IInstantiationService } from '../../../../platform/instantiation/common/instantiation.js';
@@ -131,7 +132,21 @@ export class ExtensionService extends AbstractExtensionService implements IExten
 				try {
 					await Promise.all([
 						this._webExtensionsScannerService.scanSystemExtensions().then(extensions => system.push(...extensions.map(e => toExtensionDescription(e)))),
-						this._webExtensionsScannerService.scanUserExtensions(this._userDataProfileService.currentProfile.extensionsResource, { skipInvalidExtensions: true }).then(extensions => user.push(...extensions.map(e => toExtensionDescription(e)))),
+						(async () => {
+							// In Tauri mode, user extensions live in real folders under
+							// %USERPROFILE%\.sidex\extensions (installed by the Rust
+							// backend). The web scanner only understands the
+							// `extensions.json` metadata model, so we enrich the scan
+							// with the native Rust listing so the Extensions panel and
+							// activity bar see them.
+							if ((globalThis as any).__SIDEX_TAURI__) {
+								const tauriUserExtensions = await this._scanTauriUserExtensions();
+								user.push(...tauriUserExtensions);
+							} else {
+								const extensions = await this._webExtensionsScannerService.scanUserExtensions(this._userDataProfileService.currentProfile.extensionsResource, { skipInvalidExtensions: true });
+								user.push(...extensions.map(e => toExtensionDescription(e)));
+							}
+						})(),
 						this._webExtensionsScannerService.scanExtensionsUnderDevelopment().then(extensions => development.push(...extensions.map(e => toExtensionDescription(e, true))))
 					]);
 				} catch (error) {
@@ -148,6 +163,48 @@ export class ExtensionService extends AbstractExtensionService implements IExten
 			})();
 		}
 		return this._scanWebExtensionsPromise;
+	}
+
+	private async _scanTauriUserExtensions(): Promise<IExtensionDescription[]> {
+		const result: IExtensionDescription[] = [];
+		try {
+			const { invoke } = await import('@tauri-apps/api/core');
+			const installed = await invoke<{ id: string; name: string; version: string; path: string }[]>('list_installed_extensions');
+			for (const ext of installed ?? []) {
+				if (!ext?.path) {
+					continue;
+				}
+				try {
+					const location = URI.file(ext.path);
+					const packageJsonContent = await this._fileService.readFile(URI.joinPath(location, 'package.json'));
+					const manifest = JSON.parse(packageJsonContent.value.toString());
+					if (!manifest?.publisher || !manifest?.name) {
+						this._logService.warn(`[SideX-Extensions] Skipping extension without publisher/name: ${ext.path}`);
+						continue;
+					}
+					const id = `${manifest.publisher}.${manifest.name}`;
+					result.push({
+						...manifest,
+						id,
+						identifier: new ExtensionIdentifier(id),
+						isBuiltin: false,
+						isUserBuiltin: false,
+						isUnderDevelopment: false,
+						extensionLocation: location,
+						targetPlatform: (manifest.targetPlatform as TargetPlatform) ?? TargetPlatform.UNDEFINED,
+						preRelease: false,
+					} as IExtensionDescription);
+				} catch (e) {
+					this._logService.warn(`[SideX-Extensions] Failed to read manifest for ${ext.path}: ${e instanceof Error ? e.message : e}`);
+				}
+			}
+		} catch (e) {
+			this._logService.warn(`[SideX-Extensions] Tauri user extension scan failed: ${e instanceof Error ? e.message : e}`);
+		}
+		if (result.length) {
+			this._logService.info(`[SideX-Extensions] Tauri scan found ${result.length} user extension(s)`);
+		}
+		return result;
 	}
 
 	private async _resolveExtensionsDefault(emitter: AsyncIterableEmitter<ResolvedExtensions>) {
