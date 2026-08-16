@@ -310,6 +310,7 @@ fn read_node_version(binary: &str) -> Option<String> {
         .stderr(Stdio::null());
     #[cfg(windows)]
     {
+        use std::os::windows::process::CommandExt;
         cmd.creation_flags(0x0800_0000); // CREATE_NO_WINDOW
     }
     cmd.output()
@@ -326,6 +327,7 @@ fn is_usable_node(binary: &str) -> bool {
         .stderr(Stdio::null());
     #[cfg(windows)]
     {
+        use std::os::windows::process::CommandExt;
         cmd.creation_flags(0x0800_0000); // CREATE_NO_WINDOW
     }
     cmd.status().is_ok()
