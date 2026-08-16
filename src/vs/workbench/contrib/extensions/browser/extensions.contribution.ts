@@ -53,7 +53,7 @@ import { EditorExtensions } from '../../../common/editor.js';
 import { IViewContainersRegistry, Extensions as ViewContainerExtensions, ViewContainerLocation } from '../../../common/views.js';
 import { DEFAULT_ACCOUNT_SIGN_IN_COMMAND } from '../../../services/accounts/browser/nullDefaultAccount.js';
 import { IEditorService } from '../../../services/editor/common/editorService.js';
-import { EnablementState, IExtensionManagementServerService, IPublisherInfo, IWorkbenchExtensionEnablementService, IWorkbenchExtensionManagementService } from '../../../services/extensionManagement/common/extensionManagement.js';
+import { EnablementState, IExtensionManagementServerService, IPublisherInfo, IWebExtensionsScannerService, IWorkbenchExtensionEnablementService, IWorkbenchExtensionManagementService } from '../../../services/extensionManagement/common/extensionManagement.js';
 import { IExtensionIgnoredRecommendationsService, IExtensionRecommendationsService } from '../../../services/extensionRecommendations/common/extensionRecommendations.js';
 import { IWorkspaceExtensionsConfigService } from '../../../services/extensionRecommendations/common/workspaceExtensionsConfig.js';
 import { IHostService } from '../../../services/host/browser/host.js';
@@ -555,6 +555,8 @@ class ExtensionsContributions extends Disposable implements IWorkbenchContributi
 		@IDialogService private readonly dialogService: IDialogService,
 		@ICommandService private readonly commandService: ICommandService,
 		@IProductService private readonly productService: IProductService,
+		@IWebExtensionsScannerService private readonly webExtensionsScannerService: IWebExtensionsScannerService,
+		@IUserDataProfilesService private readonly userDataProfilesService: IUserDataProfilesService,
 	) {
 		super();
 		const hasLocalServerContext = CONTEXT_HAS_LOCAL_SERVER.bindTo(contextKeyService);
@@ -891,7 +893,24 @@ class ExtensionsContributions extends Disposable implements IWorkbenchContributi
 					if (!path) {
 						throw new Error('VSIX path is not available');
 					}
-					return await invoke<{ id: string; path: string }>('install_extension', { vsixPath: path });
+					const installed = await invoke<{ id: string; path: string }>('install_extension', { vsixPath: path });
+					// The Rust backend extracts the VSIX into the user extensions
+					// folder, but the workbench UI (Installed list, activity bar)
+					// reads the VS Code `extensions.json` metadata model. Register
+					// the freshly installed folder so it shows up without a restart.
+					if (installed?.path && (globalThis as any).__SIDEX_TAURI__) {
+						try {
+							const location = URI.file(installed.path);
+							await this.webExtensionsScannerService.addExtension(
+								location,
+								{},
+								this.userDataProfilesService.defaultProfile.extensionsResource
+							);
+						} catch (e) {
+							notificationService.warn(localize('vsixMetadataUpdateFailed', "Installed extension but could not refresh the Installed list: {0}", e instanceof Error ? e.message : String(e)));
+						}
+					}
+					return installed;
 				}));
 
 				const errors = results.filter(r => r.status === 'rejected').map(r => (r as PromiseRejectedResult).reason);

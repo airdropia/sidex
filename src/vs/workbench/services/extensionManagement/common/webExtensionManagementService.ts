@@ -526,9 +526,15 @@ class InstallExtensionTask extends AbstractExtensionTask<ILocalExtension> implem
 
 	private async installViaTauri(galleryExtension: IGalleryExtension, metadata: Metadata): Promise<IScannedExtension> {
 		const { invoke } = await import('../../../../sidex-bridge.js');
-		const installed = await invoke<{ id: string; path: string }>('install_extension_from_marketplace', {
-			extensionId: galleryExtension.identifier.id
-		});
+		// Guard against a stalled marketplace download: surface a clear error
+		// instead of leaving the Extensions panel in an endless "installing"
+		// state. The Rust side also has its own per-attempt timeouts.
+		const installed = await Promise.race([
+			invoke<{ id: string; path: string }>('install_extension_from_marketplace', {
+				extensionId: galleryExtension.identifier.id
+			}),
+			new Promise<never>((_, reject) => setTimeout(() => reject(new Error(`Timed out while installing ${galleryExtension.identifier.id}. Please check your network connection and try again.`)), 10 * 60 * 1000))
+		]);
 		if (!installed?.path) {
 			throw new Error(`Extension ${galleryExtension.identifier.id} install failed: no path returned`);
 		}

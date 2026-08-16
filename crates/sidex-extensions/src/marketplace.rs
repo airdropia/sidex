@@ -545,8 +545,10 @@ impl MarketplaceClient {
     /// immediately because retrying a bad URL or auth error cannot recover.
     pub async fn download_from_url(&self, url: &str) -> Result<Vec<u8>> {
         let client = reqwest::Client::builder()
-            .timeout(std::time::Duration::from_secs(900))
+            .timeout(std::time::Duration::from_secs(300))
             .connect_timeout(std::time::Duration::from_secs(15))
+            .gzip(true)
+            .brotli(true)
             .user_agent(concat!(
                 "SideX/",
                 env!("CARGO_PKG_VERSION"),
@@ -556,6 +558,7 @@ impl MarketplaceClient {
             .map_err(|e| anyhow::anyhow!("failed to build download client: {e}"))?;
 
         const MAX_ATTEMPTS: u32 = 3;
+        const MAX_DOWNLOAD_BYTES: u64 = 1024 * 1024 * 1024; // 1 GiB safety cap
         let mut last_error = String::new();
 
         for attempt in 1..=MAX_ATTEMPTS {
@@ -590,6 +593,14 @@ impl MarketplaceClient {
                     "vsix download failed: HTTP {}",
                     status.as_u16()
                 ));
+            }
+
+            if let Some(content_length) = response.content_length() {
+                if content_length > MAX_DOWNLOAD_BYTES {
+                    return Err(anyhow::anyhow!(
+                        "vsix download too large: {content_length} bytes (limit {MAX_DOWNLOAD_BYTES})"
+                    ));
+                }
             }
 
             match response.bytes().await {

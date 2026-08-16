@@ -90,6 +90,27 @@ type ExtensionsLoadClassification = {
 	readonly count: { classification: 'PublicNonPersonalData'; purpose: 'FeatureInsight'; comment: 'The number of extensions that are installed.' };
 };
 
+/**
+ * Converts a local extension icon URI into a browser-loadable URL.
+ *
+ * In Tauri mode the WebView runs over HTTPS (`useHttpsScheme: true`), so:
+ * - `file://` and `vscode-file://` URLs are rejected by the browser
+ *   (`ERR_UNKNOWN_URL_SCHEME` / blocked local file access), and
+ * - a non-secure custom scheme (`sidex-asset://`) is blocked as mixed
+ *   content on an HTTPS page.
+ *
+ * Tauri's built-in asset protocol (`assetProtocol.enable: true`) serves
+ * files over HTTPS (`https://asset.localhost/...`) with scope `$HOME/**`,
+ * which covers the user extensions directory. Use it for `<img>` src.
+ */
+function toBrowserIconUrl(uri: URI): string {
+	if ((globalThis as any).__SIDEX_TAURI__) {
+		const encoded = encodeURIComponent(uri.fsPath);
+		return `https://asset.localhost/${encoded}`;
+	}
+	return uri.with({ scheme: 'vscode-file', authority: 'localhost' }).toString(true);
+}
+
 export class Extension implements IExtension {
 
 	public enablementState: EnablementState = EnablementState.EnabledGlobally;
@@ -260,9 +281,7 @@ export class Extension implements IExtension {
 	private get localIconUrl(): string | undefined {
 		if (this.local && this.local.manifest.icon) {
 			const uri = resources.joinPath(this.local.location, this.local.manifest.icon);
-			// Use vscode-file:// scheme for local extension icons so they work
-			// in <img> tags without mixed-content issues from sidex-asset://
-			return uri.with({ scheme: 'vscode-file', authority: 'localhost' }).toString(true);
+			return toBrowserIconUrl(uri);
 		}
 		return undefined;
 	}
@@ -270,7 +289,7 @@ export class Extension implements IExtension {
 	private get resourceExtensionIconUrl(): string | undefined {
 		if (this.resourceExtension?.manifest.icon) {
 			const uri = resources.joinPath(this.resourceExtension.location, this.resourceExtension.manifest.icon);
-			return uri.with({ scheme: 'vscode-file', authority: 'localhost' }).toString(true);
+			return toBrowserIconUrl(uri);
 		}
 		return undefined;
 	}

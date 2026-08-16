@@ -326,8 +326,13 @@ class FileAccessImpl {
 		}
 
 		if (uri.scheme === Schemas.file && (globalThis as any).__SIDEX_TAURI__) {
+			// The WebView runs over HTTPS (useHttpsScheme: true). `sidex-asset://`
+			// (non-secure custom scheme) would be blocked as mixed content, and
+			// `vscode-file://` produces ERR_UNKNOWN_URL_SCHEME in `<img>`/fetch.
+			// Tauri's built-in asset protocol serves files over HTTPS at
+			// https://asset.localhost/<encoded> with scope $HOME/**.
 			const encoded = encodeURIComponent(uri.fsPath);
-			return URI.parse(`sidex-asset://localhost/${encoded}`);
+			return URI.parse(`https://asset.localhost/${encoded}`);
 		}
 
 		// Convert to `vscode-file` resource..
