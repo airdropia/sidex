@@ -416,7 +416,22 @@ export class BrowserExtensionHostKindPicker implements IExtensionHostKindPicker 
 		if (canRunRemotely) {
 			result.push(ExtensionHostKind.Remote);
 		}
-		return (result.length > 0 ? result[0] : null);
+		if (result.length > 0) {
+			return result[0];
+		}
+		// In Tauri mode, a locally installed extension that matches no host kind
+		// (e.g. a Node-only extension with `main` but no `browser` entry, like
+		// Kilo Code) would otherwise get a `null` running location, be filtered
+		// out of the registry, and never have its declarative contributions
+		// (viewsContainers, views, ...) processed by the workbench — so its
+		// activity bar icon never appears. Assign it LocalWebWorker purely so it
+		// enters the extension registry; createExtensionHost returns null for
+		// LocalWebWorker in Tauri mode, so no web worker is spawned and the
+		// Rust/Node extension host remains the sole executor (no double activation).
+		if ((globalThis as any).__SIDEX_TAURI__ && isInstalledLocally) {
+			return ExtensionHostKind.LocalWebWorker;
+		}
+		return null;
 	}
 }
 

@@ -1,6 +1,6 @@
 {
   "name": "sidex",
-  "version": "0.2.11",
+  "version": "0.2.12",
   "type": "module",
   "scripts": {
     "setup": "node scripts/generate-extension-meta.js",
