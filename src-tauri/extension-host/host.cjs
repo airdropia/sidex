@@ -3314,6 +3314,12 @@ function createVscodeShim() {
     get visibleTextEditors() {
       return [...host._editorValues.values()];
     },
+    get visibleNotebookEditors() {
+      return [];
+    },
+    get activeNotebookEditor() {
+      return undefined;
+    },
     onDidChangeActiveTextEditor: (listener, thisArg, disposables) =>
       host._onActiveEditorChangeEvent.event(listener, thisArg, disposables),
     onDidChangeVisibleTextEditors: (listener, thisArg, disposables) =>
