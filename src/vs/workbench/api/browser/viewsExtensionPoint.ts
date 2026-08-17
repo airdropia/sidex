@@ -487,11 +487,11 @@ class ViewsExtensionHandler implements IWorkbenchContribution {
 				);
 				return false;
 			}
-			if (!/^[a-z0-9_-]+$/i.test(descriptor.id)) {
+			if (!/^[a-z0-9_.-]+$/i.test(descriptor.id)) {
 				collector.error(
 					localize(
 						'requireidstring',
-						"property `{0}` is mandatory and must be of type `string` with non-empty value. Only alphanumeric characters, '_', and '-' are allowed.",
+						"property `{0}` is mandatory and must be of type `string` with non-empty value. Only alphanumeric characters, '_', '-', and '.' are allowed.",
 						'id'
 					)
 				);
